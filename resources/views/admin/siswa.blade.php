@@ -56,7 +56,7 @@
                             </td>
                             <td>{{ $user->nama }}</td>
                             <td>{{ $user->username }}</td>
-                            <td>{{ optional($user->kelasAktif)->tingkat }}{{ optional($user->kelasAktif)->rombel }}</td>
+                            <td>{{ optional($user->kelasAktif)->tingkat }}-{{ optional($user->kelasAktif)->rombel }}</td>
                             <td>{{ $user->telpon }}</td>
                             @if(Auth::user()->role != 'kepsek')
                             <td class="text-center">
@@ -127,7 +127,7 @@
                         </div>
                          <div class="form-group col-md-4">
                             <label>Kelamin</label>
-                            <select name="kelamin" class="form-control">
+                            <select name="kelamin" class="form-control" required>
                                 <option value="pria">Pria</option>
                                 <option value="wanita">Wanita</option>
                             </select>
@@ -138,7 +138,7 @@
                         <div class="form-row">
                             <div class="form-group col-md-4">
                                 <label>Tingkat</label>
-                                <select name="tingkat" class="form-control">
+                                <select name="tingkat" class="form-control" required>
                                     <option value="10">10</option>
                                     <option value="11">11</option>
                                     <option value="12">12</option>
@@ -146,10 +146,16 @@
                             </div>
                             <div class="form-group col-md-4">
                                 <label>Rombel</label>
-                                <select name="rombel" class="form-control">
-                                    <option value="A">A</option>
-                                    <option value="B">B</option>
-                                    <option value="C">C</option>
+                                <select name="rombel" class="form-control" required>
+                                    <option value="1">1</option>
+                                    <option value="2">2</option>
+                                    <option value="3">3</option>
+                                    <option value="4">4</option>
+                                    <option value="5">5</option>
+                                    <option value="6">6</option>
+                                    <option value="7">7</option>
+                                    <option value="8">8</option>
+                                    <option value="9">9</option>
                                 </select>
                             </div>
                             <div class="form-group col-md-4">
@@ -251,7 +257,7 @@
                         <div class="form-row">
                             <div class="form-group col-md-4">
                                 <label>Tingkat</label>
-                                <select name="tingkat" id="editTingkat" class="form-control">
+                                <select name="tingkat" id="editTingkat" class="form-control" required>
                                     <option value="10">10</option>
                                     <option value="11">11</option>
                                     <option value="12">12</option>
@@ -259,19 +265,25 @@
                             </div>
                             <div class="form-group col-md-4">
                                 <label>Rombel</label>
-                                <select name="rombel" id="editRombel" class="form-control">
-                                    <option value="A">A</option>
-                                    <option value="B">B</option>
-                                    <option value="C">C</option>
+                                <select name="rombel" id="editRombel" class="form-control" required>
+                                    <option value="1">1</option>
+                                    <option value="2">2</option>
+                                    <option value="3">3</option>
+                                    <option value="4">4</option>
+                                    <option value="5">5</option>
+                                    <option value="6">6</option>
+                                    <option value="7">7</option>
+                                    <option value="8">8</option>
+                                    <option value="9">9</option>
                                 </select>
                             </div>
                             <div class="form-group col-md-4">
                                 <label>Tahun Ajaran</label>
-                                <input type="text" name="tahun_ajaran" id="editTahunAjaran" class="form-control">
+                                <input type="text" name="tahun_ajaran" id="editTahunAjaran" class="form-control" required>
                             </div>
                             <div class="form-group col-md-4">
                                 <label>Semester</label>
-                                <select name="semester" id="editSemester" class="form-control">
+                                <select name="semester" id="editSemester" class="form-control" required>
                                     <option value="ganjil">Ganjil</option>
                                     <option value="genap">Genap</option>
                                 </select>

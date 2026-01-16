@@ -53,9 +53,7 @@
                             <th>No Telepon</th>
                             <th>Alamat</th>
                             <th>Level</th>
-                            @if(in_array(Auth::user()->role, ['kepsek', 'kep_perpus', 'admin']))
                             <th>Aksi</th>
-                            @endif
                         </tr>
                     </thead>
                     <tbody>
@@ -79,25 +77,29 @@
                                 {{ $label }}
                             </td>
                             
-                            @if(in_array(Auth::user()->role, ['kepsek', 'kep_perpus', 'admin']))
                             <td class="text-center">
-                                <button class="btn btn-warning btn-sm" 
-                                    data-toggle="modal" 
-                                    data-target="#modalEditPetugas"
-                                    onclick="loadEditPetugas(
-                                        '{{ $p->id_user }}',
-                                        '{{ $p->nama }}',
-                                        '{{ $p->username }}',
-                                        '{{ $p->telpon }}',
-                                        '{{ $p->alamat }}',
-                                        '{{ $p->kelamin }}',
-                                        '{{ $p->role }}'
-                                    )">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-
+                                @if(
+                                    in_array(Auth::user()->role, ['admin','kepsek']) ||
+                                    (Auth::user()->role === 'kep_perpus' && $p->role === 'petugas')
+                                )
+                                    <button class="btn btn-warning btn-sm"
+                                        data-toggle="modal"
+                                        data-target="#modalEditPetugas"
+                                        onclick="loadEditPetugas(
+                                            '{{ $p->id_user }}',
+                                            '{{ $p->nama }}',
+                                            '{{ $p->username }}',
+                                            '{{ $p->telpon }}',
+                                            '{{ $p->alamat }}',
+                                            '{{ $p->kelamin }}',
+                                            '{{ $p->role }}'
+                                        )">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                @else
+                                    <span class="text-muted"></span>
+                                @endif
                             </td>
-                            @endif
                         </tr>
                         @endforeach
                     </tbody>
@@ -219,7 +221,7 @@
                             <option value="petugas">Petugas</option>
                             <option value="guru">Guru</option>
 
-                            @if(in_array(Auth::user()->role, ['kepsek', 'admin']))
+                            @if(in_array(Auth::user()->role, ['admin','kepsek']))
                                 <option value="admin">Admin</option>
                                 <option value="kep_perpus">Kepala Perpustakaan</option>
                                 <option value="kepsek">Kepala Sekolah</option>
@@ -229,7 +231,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-warning">Update</button>
+                    <button type="submit" id="btnUpdatePetugas" class="btn btn-warning">Update</button>
                 </div>
             </form>
         </div>
@@ -249,7 +251,30 @@
         document.getElementById('editAlamat').value = alamat;
         document.getElementById('editKelamin').value = kelamin;
         document.getElementById('editRole').value = role;
+
+        const btnUpdate = document.getElementById('btnUpdatePetugas');
+
+        if (
+            "{{ Auth::user()->role }}" === "kep_perpus" &&
+            (role === "admin" || role === "kepsek")
+        ) {
+            document
+                .querySelectorAll('#modalEditPetugas input, #modalEditPetugas select')
+                .forEach(el => el.disabled = true);
+
+            btnUpdate.style.display = 'none'; // ⬅️ KUNCI
+        } else {
+            btnUpdate.style.display = 'inline-block';
+        }
     }
+
+    $('#modalEditPetugas').on('hidden.bs.modal', function () {
+        document
+            .querySelectorAll('#modalEditPetugas input, #modalEditPetugas select')
+            .forEach(el => el.disabled = false);
+
+        document.getElementById('btnUpdatePetugas').style.display = 'inline-block';
+    });
 
     $(document).ready(function () {
         $('#dataTablePetugas').DataTable({

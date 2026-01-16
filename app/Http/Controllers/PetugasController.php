@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class PetugasController extends Controller
 {
@@ -60,45 +61,64 @@ class PetugasController extends Controller
 
     public function update(Request $request, $id)
     {
-        $loginRole = auth()->user()->role;
-
         $user = User::findOrFail($id);
 
         $request->validate([
             'nama' => 'required',
-            'username' => 'required|unique:user,username,'.$id.',id_user',
+            'username' => 'required|unique:user,username,' . $id . ',id_user',
             'role' => 'required|in:petugas,guru,admin,kep_perpus,kepsek',
         ]);
 
-        $data = [
-            'nama' => $request->nama,
-            'username' => $request->username,
-            'role' => $request->role,
-            'telpon' => $request->telpon,
-            'alamat' => $request->alamat,
-            'kelamin' => $request->kelamin,
-        ];
+        DB::beginTransaction();
+        try {
+            $oldRole = $user->role;
 
-        if ($request->filled('password')) {
-            $data['password'] = Hash::make($request->password);
+            // update user
+            $user->update([
+                'nama' => $request->nama,
+                'username' => $request->username,
+                'role' => $request->role,
+                'telpon' => $request->telpon,
+                'alamat' => $request->alamat,
+                'kelamin' => $request->kelamin,
+            ]);
+
+            // riwayat role
+            if ($oldRole !== $request->role) {
+                DB::table('riwayat_role_user')
+                    ->where('user_id', $id)
+                    ->whereNull('tanggal_selesai')
+                    ->update([
+                        'tanggal_selesai' => now()->toDateString()
+                    ]);
+
+                DB::table('riwayat_role_user')->insert([
+                    'user_id' => $id,
+                    'role' => $request->role,
+                    'tanggal_mulai' => now()->toDateString(),
+                    'tanggal_selesai' => null
+                ]);
+            }
+
+            // sinkron petugas
+            if ($request->role === 'petugas') {
+                DB::table('petugas')->updateOrInsert(
+                    ['id_pegawai' => $id],
+                    ['status' => 'aktif']
+                );
+            } else {
+                DB::table('petugas')
+                    ->where('id_pegawai', $id)
+                    ->update(['status' => 'non-aktif']);
+            }
+
+            DB::commit();
+            return back()->with('success','Data petugas diperbarui');
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return back()->withErrors($e->getMessage());
         }
-
-        $user->update($data);
-        $user->refresh();
-
-        // Perubahan role petugas dan != petugas
-        if ($request->role === 'petugas') {
-            \DB::table('petugas')->updateOrInsert(
-                ['id_pegawai' => $id],
-                ['status' => 'aktif']
-            );
-        } else {
-            \DB::table('petugas')
-                ->where('id_pegawai', $id)
-                ->update(['status' => 'non-aktif']);
-        }
-
-        return back()->with('success','Data petugas diperbarui');
     }
 
     public function destroy($id)

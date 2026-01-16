@@ -153,7 +153,7 @@
     @endif
 
     {{-- GRAFIK BUKU --}}
-    @if($sections->contains('grafik_buku') && $chart2)
+    @if($sections->contains('grafik'))
         <h3>Grafik Buku</h3>
         <div class="chart">
             <img src="{{ $chart2 }}">
@@ -192,31 +192,6 @@
             @endif
         @endforeach
 
-        <h3>Buku yang sedang Dipinjam</h3>
-
-        @if($listDipinjam->isEmpty())
-            <div class="empty">Tidak ada data</div>
-        @else
-            <table>
-                <tr>
-                    <th class="no-col">No</th>
-                    <th>Kategori</th>
-                    <th>Judul</th>
-                    <th>Pengarang</th>
-                    <th>Jumlah</th>
-                </tr>
-
-                @foreach($listDipinjam as $i => $b)
-                    <tr>
-                        <td class="no-col">{{ $i + 1 }}</td>
-                        <td>{{ $b->kategori }}</td>
-                        <td>{{ $b->judul }}</td>
-                        <td>{{ $b->pengarang }}</td>
-                        <td>{{ $b->jumlah }}</td>
-                    </tr>
-                @endforeach
-            </table>
-        @endif
     @endif
 
     {{-- PEMINJAMAN --}}
@@ -239,6 +214,35 @@
             @endforeach
 
         </table>
+    @endif
+
+    @if($sections->contains('buku_dipinjam'))
+        <h2>Daftar Buku yang Dipinjam</h2>
+
+        @if($listDipinjam->isEmpty())
+            <div class="empty">Tidak ada data</div>
+        @else
+            <table>
+                <tr>
+                    <th>No</th>
+                    <th>Kategori</th>
+                    <th>Judul / Paket</th>
+                    <th>Tanggal Pinjam</th>
+                    <th>Status</th>
+                    <th>Jumlah</th>
+                </tr>
+                @foreach($listDipinjam as $i => $b)
+                    <tr>
+                        <td>{{ $i + 1 }}</td>
+                        <td>{{ $b->kategori }}</td>
+                        <td>{{ $b->judul }}</td>
+                        <td>{{ \Carbon\Carbon::parse($b->tanggal_pinjam)->format('d-m-Y') }}</td>
+                        <td>{{ $b->status }}</td>
+                        <td>{{ $b->jumlah }}</td>
+                    </tr>
+                @endforeach
+            </table>
+        @endif
     @endif
 
     {{-- DISTRIBUSI USER --}}
@@ -279,7 +283,7 @@
     @endif
 
     {{-- GRAFIK USER --}}
-    @if($sections->contains('grafik_user') && $chart3)
+    @if($sections->contains('grafik'))
         <h3>Grafik Komposisi User</h3>
         <div class="chart">
             <img src="{{ $chart3 }}">
@@ -307,8 +311,8 @@
                     <td class="no-col">{{ $i + 1 }}</td>
                     <td>{{ $u->nama }}</td>
                     <td>
-                        @if($u->kelasAktif)
-                            {{ $u->kelasAktif->tingkat }}{{ $u->kelasAktif->rombel }}
+                        @if($u->tingkat)
+                            {{ $u->tingkat }}-{{ $u->rombel }}
                         @else
                             -
                         @endif

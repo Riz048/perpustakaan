@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
 class Peminjaman extends Model
 {
@@ -43,5 +44,20 @@ class Peminjaman extends Model
     public function paket()
     {
         return $this->belongsTo(PaketBuku::class, 'paket_id');
+    }
+
+    public function getStatusLabelAttribute()
+    {
+        if ($this->status === 'dikembalikan') return 'Dikembalikan';
+
+        $batas = Carbon::parse($this->tanggal_pinjam)
+                    ->addDays($this->lama_pinjam);
+
+        if (Carbon::today()->gt($batas)) {
+            $hari = $batas->diffInDays(Carbon::today());
+            return "Terlambat {$hari} hari";
+        }
+
+        return 'Dipinjam';
     }
 }

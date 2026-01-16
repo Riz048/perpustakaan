@@ -89,11 +89,28 @@
 
     <div class="card fade-in mb-4">
         <div class="card-body">
+
+            <div class="mb-3 d-flex justify-content-end">
+                <select id="filterStatus" class="form-control filter-select">
+                    <option value="">Semua Status</option>
+                    <option value="Dipinjam">Dipinjam</option>
+                    <option value="Terlambat">Terlambat</option>
+                    <option value="Dikembalikan">Dikembalikan</option>
+                </select>
+
+                <select id="filterJenis" class="form-control filter-select ml-2">
+                    <option value="">Semua Jenis</option>
+                    <option value="BUKU_WAJIB">Buku Wajib</option>
+                    <option value="BIASA">Biasa</option>
+                </select>
+            </div>
+
             <div class="table-responsive overflow-auto" style="max-width:100vw;">
                 <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
                     <thead>
                         <tr>
                             <th>ID</th>
+                            <th>Jenis</th>
                             <th>Tanggal Pinjam</th>
                             <th>Lama (Hari)</th>
                             <th>Judul Buku</th>
@@ -111,6 +128,17 @@
                         <tr>
                             <td data-order="{{ $item->id }}">
                                 PMJ-{{ $item->id }}
+                            </td>
+                            <td>
+                                <span style="display:none">
+                                    {{ $item->keterangan === 'BUKU_WAJIB' ? 'BUKU_WAJIB' : 'BIASA' }}
+                                </span>
+
+                                @if($item->keterangan === 'BUKU_WAJIB')
+                                    <span class="badge badge-info">Buku Wajib</span>
+                                @else
+                                    <span class="badge badge-secondary">Biasa</span>
+                                @endif
                             </td>
                             <td>{{ $item->tanggal_pinjam }}</td>
                             <td>{{ $item->lama_pinjam }}</td>
@@ -131,9 +159,13 @@
                                 @endif
                             </td>
                             <td>
-                                <span class="badge badge-{{ $item->status == 'dipinjam' ? 'warning' : 'success' }}">
-                                    {{ $item->status }}
-                                </span>
+                                @if($item->status === 'dikembalikan')
+                                    <span class="badge badge-success">Dikembalikan</span>
+                                @elseif(str_contains($item->status_label, 'Terlambat'))
+                                    <span class="badge badge-danger">{{ $item->status_label }}</span>
+                                @else
+                                    <span class="badge badge-warning">Dipinjam</span>
+                                @endif
                             </td>
                             <td>
                             @if($item->user)
@@ -324,25 +356,30 @@
         $('#editPinjamForm').attr('action', `/peminjaman/${id}`);
     }
     
-    $(document).ready(function () { 
-        $("#dataTable").DataTable({
-            order: [[0, "desc"]],
-            columnDefs: [
-                {
-                    targets: 0,
-                    type: "num"
-                }
-            ],
-            search: { smart: false }
-        });
-    });
-
     $(document).ready(function () {
         $('.select-search').select2({
             placeholder: 'Ketik untuk mencari buku…',
             allowClear: true,
             width: '100%',
             minimumResultsForSearch: 0
+        });
+    });
+
+    $(document).ready(function () {
+        var table = $("#dataTable").DataTable({
+            order: [[0, "desc"]],
+            columnDefs: [{ targets: 0, type: "num" }],
+            search: { smart: false }
+        });
+
+        // filter status
+        $("#filterStatus").on("change", function () {
+            table.column(5).search($(this).val()).draw();
+        });
+
+        // filter jenis (buku biasa/paket)
+        $("#filterJenis").on("change", function () {
+            table.column(1).search($(this).val()).draw();
         });
     });
 

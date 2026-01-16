@@ -36,7 +36,7 @@
     </li>
 
     {{-- KURIKULUM — khusus admin, kepperpus, kepsek --}}
-    @if(in_array(Auth::user()->role, ['kep_perpus','admin','kepsek','petugas']))
+    @if(in_array(Auth::user()->role, ['kep_perpus','admin','kepsek']))
         <hr class="sidebar-divider">
         <div class="sidebar-heading">Kurikulum</div>
 
@@ -56,7 +56,6 @@
     @endif
 
     {{-- DATA USER — khusus admin, kepperpus, kepsek --}}
-    @if(in_array(Auth::user()->role, ['admin','kep_perpus','kepsek']))
         <hr class="sidebar-divider">
 
         <div class="sidebar-heading">Data Users</div>
@@ -68,7 +67,8 @@
                 <span>Siswa</span>
             </a>
         </li>
-
+        
+    @if(in_array(Auth::user()->role, ['admin','kep_perpus','kepsek']))
         {{-- Guru --}}
         <li class="nav-item {{ request()->routeIs('users.guru') ? 'active' : '' }}">
             <a class="nav-link sidebar-link" href="{{ route('users.guru') }}">

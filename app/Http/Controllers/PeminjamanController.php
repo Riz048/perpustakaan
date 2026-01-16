@@ -10,6 +10,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class PeminjamanController extends Controller
 {
@@ -57,6 +58,39 @@ class PeminjamanController extends Controller
 
         $keterangan = $request->keterangan ?? '-';
         
+        $isBukuWajib = ($request->keterangan === 'BUKU_WAJIB');
+
+        // hanya batasi kalau buku biasa
+        if (!$isBukuWajib) {
+
+            // masih punya buku biasa yang belum dikembalikan
+            $masihPinjam = Peminjaman::where('id_user', $request->id_user)
+                ->where('status', 'dipinjam')
+                ->where('keterangan', '!=', 'BUKU_WAJIB')
+                ->exists();
+
+            if ($masihPinjam) {
+                return back()->withErrors(
+                    'Siswa masih memiliki buku yang belum dikembalikan.'
+                );
+            }
+
+            // batas minggu kalender (Senin - Minggu)
+            $awalMinggu = Carbon::now()->startOfWeek(Carbon::MONDAY);
+            $akhirMinggu = Carbon::now()->endOfWeek(Carbon::SUNDAY);
+
+            $sudahPinjamMingguIni = Peminjaman::where('id_user', $request->id_user)
+                ->where('keterangan', '!=', 'BUKU_WAJIB')
+                ->whereBetween('tanggal_pinjam', [$awalMinggu, $akhirMinggu])
+                ->exists();
+
+            if ($sudahPinjamMingguIni) {
+                return back()->withErrors(
+                    'Siswa hanya boleh meminjam 1 buku biasa dalam satu minggu.'
+                );
+            }
+        }
+
         $peminjaman = Peminjaman::create([
             'tanggal_pinjam' => $request->tanggal_pinjam,
             'lama_pinjam'    => $request->lama_pinjam,

@@ -34,133 +34,7 @@
                 </button>
             @endif
 
-            <form id="exportForm" method="POST" action="{{ route('dashboard.export.pdf') }}" target="_blank">
-                @csrf
-                <input type="hidden" name="mode">
-                <input type="hidden" name="year">
-                <input type="hidden" name="start_date">
-                <input type="hidden" name="end_date">
-
-                <input type="hidden" name="sections">
-            </form>
-
-            <div class="modal fade" id="exportModal" tabindex="-1">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-
-                        <div class="modal-header">
-                            <h5 class="modal-title">Export Report</h5>
-                            <button type="button" class="close" data-dismiss="modal">&times;</button>
-                        </div>
-
-                        <div class="modal-body">
-
-                            <div id="exportError"
-                                class="alert alert-danger d-none mb-3">
-                                Minimal pilih satu bagian laporan.
-                            </div>
-
-                            {{-- MODE EXPORT --}}
-                            <div class="form-group">
-                                <label class="font-weight-bold">Jenis Export</label>
-
-                                <div class="custom-control custom-radio">
-                                    <input type="radio" id="modeYear" name="exportMode" class="custom-control-input" value="year" checked>
-                                    <label class="custom-control-label" for="modeYear">Tahunan</label>
-                                </div>
-
-                                <div class="custom-control custom-radio">
-                                    <input type="radio" id="modeRange" name="exportMode" class="custom-control-input" value="range">
-                                    <label class="custom-control-label" for="modeRange">Rentang Tanggal</label>
-                                </div>
-                            </div>
-
-                            {{-- TAHUN --}}
-                            <div id="yearInput">
-                                <label>Tahun</label>
-                                <select id="year" class="form-control">
-                                    @for($y = date('Y'); $y >= 2020; $y--)
-                                        <option value="{{ $y }}" {{ $y == date('Y') ? 'selected' : '' }}>
-                                            {{ $y }}
-                                        </option>
-                                    @endfor
-                                </select>
-                            </div>
-
-                            {{-- RENTANG --}}
-                            <div id="rangeInput" class="d-none">
-                                <div class="form-group">
-                                    <label>Dari Tanggal</label>
-                                    <input type="date" id="start_date" class="form-control"
-                                        value="{{ now()->startOfMonth()->format('Y-m-d') }}">
-                                </div>
-
-                                <div class="form-group">
-                                    <label>Sampai Tanggal</label>
-                                    <input type="date" id="end_date" class="form-control"
-                                        value="{{ now()->endOfMonth()->format('Y-m-d') }}">
-                                </div>
-                            </div>
-
-                            {{-- PILIH BAGIAN EXPORT --}}
-                            <div class="form-group mt-3">
-                                <label class="font-weight-bold">Bagian Laporan</label>
-
-                                <div class="custom-control custom-checkbox">
-                                    <input type="checkbox" class="custom-control-input export-section" id="secRingkasan" value="ringkasan" checked>
-                                    <label class="custom-control-label" for="secRingkasan">Ringkasan Umum</label>
-                                </div>
-
-                                <div class="custom-control custom-checkbox">
-                                    <input type="checkbox" class="custom-control-input export-section" id="secKondisiBuku" value="kondisi_buku" checked>
-                                    <label class="custom-control-label" for="secKondisiBuku">Kondisi Buku</label>
-                                </div>
-
-                                <div class="custom-control custom-checkbox">
-                                    <input type="checkbox" class="custom-control-input export-section" id="secSebaranBuku" value="sebaran_buku" checked>
-                                    <label class="custom-control-label" for="secSebaranBuku">Sebaran Buku per Kategori</label>
-                                </div>
-
-                                <div class="custom-control custom-checkbox">
-                                    <input type="checkbox" class="custom-control-input export-section" id="secPeminjaman" value="peminjaman" checked>
-                                    <label class="custom-control-label" for="secPeminjaman">Peminjaman</label>
-                                </div>
-
-                                <hr>
-
-                                <div class="custom-control custom-checkbox">
-                                    <input type="checkbox" class="custom-control-input export-section" id="secGrafikBuku" value="grafik_buku" checked>
-                                    <label class="custom-control-label" for="secGrafikBuku">Grafik Buku</label>
-                                </div>
-
-                                <div class="custom-control custom-checkbox">
-                                    <input type="checkbox" class="custom-control-input export-section" id="secGrafikUser" value="grafik_user" checked>
-                                    <label class="custom-control-label" for="secGrafikUser">Grafik Komposisi User</label>
-                                </div>
-
-                                <hr>
-
-                                <div class="custom-control custom-checkbox">
-                                    <input type="checkbox" class="custom-control-input export-section" id="secListBuku" value="buku" checked>
-                                    <label class="custom-control-label" for="secListBuku">Daftar Buku (Baik / Rusak / Hilang)</label>
-                                </div>
-
-                                <div class="custom-control custom-checkbox">
-                                    <input type="checkbox" class="custom-control-input export-section" id="secListUser" value="list_user" checked>
-                                    <label class="custom-control-label" for="secListUser">Distribusi User</label>
-                                </div>
-                            </div>
-
-                        </div>
-
-                        <div class="modal-footer">
-                            <button class="btn btn-secondary" data-dismiss="modal">Batal</button>
-                            <button class="btn btn-primary" id="confirmExport">Export</button>
-                        </div>
-
-                    </div>
-                </div>
-            </div>
+            @include('admin.dashboard._export-modal')
 
         </div>
     </div>
@@ -367,7 +241,7 @@
     modeRange.addEventListener('change', toggleMode);
     toggleMode();
 
-document.getElementById('confirmExport').addEventListener('click', function () {
+    document.getElementById('confirmExport').addEventListener('click', function () {
 
     const errorBox = document.getElementById('exportError');
     errorBox.classList.add('d-none');
@@ -413,22 +287,22 @@ document.getElementById('confirmExport').addEventListener('click', function () {
         form.appendChild(input);
     }
 
-    if (sections.includes('grafik_buku')) {
-        let img = document.getElementById('chartStokBuku').toDataURL('image/png');
-        let input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = 'chart2';
-        input.value = img;
-        form.appendChild(input);
-    }
+    if (sections.includes('grafik')) {
+        // grafik buku
+        let img2 = document.getElementById('chartStokBuku').toDataURL('image/png');
+        let input2 = document.createElement('input');
+        input2.type = 'hidden';
+        input2.name = 'chart2';
+        input2.value = img2;
+        form.appendChild(input2);
 
-    if (sections.includes('grafik_user')) {
-        let img = document.getElementById('chartUser').toDataURL('image/png');
-        let input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = 'chart3';
-        input.value = img;
-        form.appendChild(input);
+        // grafik user
+        let img3 = document.getElementById('chartUser').toDataURL('image/png');
+        let input3 = document.createElement('input');
+        input3.type = 'hidden';
+        input3.name = 'chart3';
+        input3.value = img3;
+        form.appendChild(input3);
     }
 
     document.getElementById('exportForm').submit();
@@ -439,25 +313,35 @@ document.getElementById('confirmExport').addEventListener('click', function () {
 <script>
 $('#exportModal').on('show.bs.modal', function () {
 
-    // CHECKBOX
+    // reset
     document.querySelectorAll('.export-section').forEach(cb => {
-        cb.checked = true;
+        cb.checked = false;
     });
 
-    // TAHUNAN
+    // default
+    document.getElementById('secRingkasan').checked = true;
+    document.getElementById('secKondisiBuku').checked = true;
+    document.getElementById('secSebaranBuku').checked = true;
+    document.getElementById('secPeminjaman').checked = true;
+    document.getElementById('secDipinjam').checked = true;
+    document.getElementById('secListBuku').checked = true;
+    document.getElementById('secListUser').checked = true;
+    document.getElementById('secGrafik').checked = false;
+
+    // tahunan
     document.getElementById('modeYear').checked = true;
     document.getElementById('modeRange').checked = false;
 
-    // TANGGAL
+    // per-tanggal
     document.getElementById('year').value = "{{ date('Y') }}";
     document.getElementById('start_date').value = "{{ now()->startOfMonth()->format('Y-m-d') }}";
     document.getElementById('end_date').value = "{{ now()->endOfMonth()->format('Y-m-d') }}";
 
-    // Toggle tampilan
+    // toggle
     document.getElementById('yearInput').classList.remove('d-none');
     document.getElementById('rangeInput').classList.add('d-none');
 
-    // HIDE ERROR
+    // hide error
     const errorBox = document.getElementById('exportError');
     if (errorBox) errorBox.classList.add('d-none');
 });

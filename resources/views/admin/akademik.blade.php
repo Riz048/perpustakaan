@@ -62,13 +62,10 @@
           <th>Penerbit</th>
           <th>ISBN</th>
           <th>Pengarang</th>
-          <th>Halaman</th>z
-          <th>Buku Tersedia</th>
-          <!-- <th>Baik</th> -->
-          <!-- <th>Rusak</th> -->
-          <!-- <th>Hilang</th> -->
-          <!-- <th>Total</th> -->
-          <th>Tahun</th>
+          <th>Buku Masuk</th>
+          <th>Dipinjam</th>
+          <th>Tersedia</th>
+          <th>Tahun Masuk</th>
           <th>Sinopsis</th>
           @if(Auth::user()->role != 'kepsek')
           <th>Aksi</th>
@@ -86,13 +83,10 @@
 					<td>{{ $item->nama_penerbit }}</td>
 					<td>{{ $item->isbn }}</td>
 					<td>{{ $item->pengarang }}</td>
-					<td>{{ $item->jlh_hal }}</td>
-          <td>{{ $item->buku_tersedia }}</td>
-          <!-- <td>{{ $item->jumlah_baik }}</td> -->
-          <!-- <td>{{ $item->jumlah_rusak }}</td> -->
-          <!-- <td>{{ $item->jumlah_hilang }}</td> -->
-          <!-- <td><strong>{{ $item->total_eksemplar }}</strong></td> -->
-					<td>{{ $item->tahun_terbit }}</td>
+          <td><strong>{{ $item->buku_masuk }}</strong></td>
+          <td><span class="badge badge-warning">{{ $item->buku_dipinjam }}</span></td>
+          <td><span class="badge badge-success">{{ $item->buku_tersedia }}</span></td>
+          <td>{{ $item->tahun_masuk }}</td>
 					<td>{{ Str::limit($item->sinopsis, 20) }}</td>
 
           @if(Auth::user()->role != 'kepsek')
@@ -109,11 +103,11 @@
                 '{{ $item->nama_penerbit }}',
                 '{{ $item->isbn }}',
                 '{{ $item->pengarang }}',
-                '{{ $item->jlh_hal }}',
                 '{{ $item->jumlah_baik }}',
                 '{{ $item->jumlah_rusak }}',
                 '{{ $item->jumlah_hilang }}',
                 '{{ $item->tahun_terbit }}',
+                '{{ $item->tahun_masuk }}',
                 '{{ $item->sinopsis }}',
                 '{{ $item->keterangan }}',
                 '{{ $item->gambar }}'
@@ -193,9 +187,9 @@
               <input type="text" name="pengarang" class="form-control" required>
             </div>
 
-            <div class="col-md-3 mb-2">
-              Halaman:
-              <input type="number" name="jlh_hal" class="form-control" min="1" required>
+            <div class="col-md-4 mb-2">
+              Total:
+              <input type="number" id="tTotal" class="form-control" readonly>
             </div>
 
             <div class="col-md-4 mb-2">
@@ -214,13 +208,13 @@
             </div>
 
             <div class="col-md-4 mb-2">
-              Total:
-              <input type="number" id="tTotal" class="form-control" readonly>
+              Tahun Terbit:
+              <input type="number" name="tahun_terbit" class="form-control" placeholder="YYYY" min="1900" max="2099" required>
             </div>
 
             <div class="col-md-4 mb-2">
-              Tahun Terbit:
-              <input type="number" name="tahun_terbit" class="form-control" placeholder="YYYY" min="1900" max="2099" required>
+              Tahun Masuk:
+              <input type="number" name="tahun_masuk" class="form-control" placeholder="YYYY" min="1900" max="2099" required>
             </div>
 
             <div class="col-md-12 mb-2">
@@ -289,7 +283,10 @@
             <div class="col-md-6 mb-2">Penerbit:<input id="ePenerbit" name="nama_penerbit" class="form-control"></div>
             <div class="col-md-6 mb-2">ISBN:<input id="eIsbn" name="isbn" class="form-control"></div>
             <div class="col-md-6 mb-2">Pengarang:<input id="ePengarang" name="pengarang" class="form-control"></div>
-            <div class="col-md-3 mb-2">Halaman:<input type="number" id="eHalaman" name="jlh_hal" class="form-control"></div>
+            <div class="col-md-4 mb-2">
+              Total:
+              <input type="number" id="eTotal" class="form-control" readonly>
+            </div>
             <div class="col-md-4 mb-2">
               Baik:
               <input type="number" name="stok_baik" id="eStokBaik" class="form-control" value="0" min="0">
@@ -302,11 +299,8 @@
               Hilang:
               <input type="number" name="stok_hilang" id="eStokHilang" class="form-control" value="0" min="0">
             </div>
-            <div class="col-md-4 mb-2">
-              Total:
-              <input type="number" id="eTotal" class="form-control" readonly>
-            </div>
-            <div class="col-md-4 mb-2">Tahun:<input type="number" id="eTahun" name="tahun_terbit" class="form-control"></div>
+            <div class="col-md-4 mb-2">Tahun Terbit:<input type="number" id="eTahunTerbit" name="tahun_terbit" class="form-control"></div>
+            <div class="col-md-4 mb-2">Tahun Masuk:<input type="number" id="eTahunMasuk" name="tahun_masuk" class="form-control"></div>
             <div class="col-md-12 mb-2">Sinopsis:<textarea id="eSinopsis" name="sinopsis" class="form-control" rows="3"></textarea></div>
             <div class="col-md-12 mb-2">
               Keterangan:
@@ -344,7 +338,7 @@
 <script>
   function loadEditAkad(
     id, kategori, tipe, kode, judul, penerbit, isbn,
-    pengarang, halaman, baik, rusak, hilang, tahun, sinopsis, keterangan, gambar
+    pengarang, baik, rusak, hilang, tahun_terbit, tahun_masuk, sinopsis, keterangan, gambar
   ) {
     // $('#modalEditAkad').off('shown.bs.modal').on('shown.bs.modal', function () {
 
@@ -356,7 +350,6 @@
       $('#ePenerbit').val(penerbit);
       $('#eIsbn').val(isbn);
       $('#ePengarang').val(pengarang);
-      $('#eHalaman').val(halaman);
 
       $('#eStokBaik').val(parseInt(baik) || 0);
       $('#eStokRusak').val(parseInt(rusak) || 0);
@@ -368,7 +361,8 @@
         (parseInt(hilang) || 0)
       );
 
-      $('#eTahun').val(tahun);
+      $('#eTahunTerbit').val(tahun_terbit);
+      $('#eTahunMasuk').val(tahun_masuk);
       $('#eSinopsis').val(sinopsis);
       $('#eKeterangan').val(keterangan);
       $('#editAkadForm').attr('action', `/buku/${id}`);

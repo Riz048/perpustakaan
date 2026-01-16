@@ -17,10 +17,10 @@ class DashboardController extends Controller
     {
         $totalAkademik    = Buku::where('kelas_akademik','!=','non-akademik')->count();
         $totalNonAkademik = Buku::where('kelas_akademik','non-akademik')->count();
-        $totalSiswa       = User::where('role','siswa')->count();
         $totalPegawai     = User::whereIn('role',['guru','petugas','kep_perpus','kepsek'])->count();
+        $totalSiswa       = User::where('role','siswa')->count();
         $totalGuru        = User::where('role','guru')->count();
-        $totalPetugas     = User::whereIn('role', ['petugas','kep_perpus'])->count();
+        $totalPetugas     = User::whereIn('role',['petugas','kep_perpus'])->count();
         $kepalaPerpus     = User::where('role','kep_perpus')->first();
 
         $year = now()->year;
@@ -61,24 +61,83 @@ class DashboardController extends Controller
 
         // PERIODE
         if ($request->mode === 'range') {
-            $start = $request->start_date;
-            $end   = $request->end_date;
-            $currentYear = "$start s/d $end";
-            $queryPeminjaman = Peminjaman::whereBetween('tanggal_pinjam', [$start,$end]);
+
+            $start = Carbon::parse($request->start_date)->startOfDay();
+            $end   = Carbon::parse($request->end_date)->endOfDay();
+            $currentYear = $start->translatedFormat('d F Y').' – '.$end->translatedFormat('d F Y');
+
+            $queryPeminjaman = Peminjaman::whereBetween('tanggal_pinjam', [$start, $end]);
+
         } else {
+
             $year = $request->year;
+            $start = Carbon::create($year, 1, 1)->toDateString();
+            $end   = Carbon::create($year, 12, 31)->toDateString();
             $currentYear = $year;
+
             $queryPeminjaman = Peminjaman::whereYear('tanggal_pinjam', $year);
         }
 
+        $refDate = $end;
+
         // RINGKASAN
-        $totalAkademik    = Buku::where('kelas_akademik','!=','non-akademik')->count();
-        $totalNonAkademik = Buku::where('kelas_akademik','non-akademik')->count();
-        $totalSiswa       = User::where('role','siswa')->count();
-        $totalPegawai     = User::whereIn('role',['guru','petugas','kep_perpus','kepsek','admin'])->count();
-        $totalGuru        = User::where('role','guru')->count();
-        $totalPetugas     = User::whereIn('role',['petugas','kep_perpus'])->count();
-        $kepalaPerpus     = User::where('role','kep_perpus')->first();
+        $totalAkademik = DB::table('riwayat_status_buku as rs')
+            ->join('buku_eksemplar as e','e.id_eksemplar','=','rs.id_eksemplar')
+            ->join('buku as b','b.id','=','e.buku_id')
+            ->where('rs.tanggal_mulai','<=',$refDate)
+            ->whereIn('rs.id', function ($q) use ($refDate) {
+                $q->select(DB::raw('MAX(id)'))
+                ->from('riwayat_status_buku')
+                ->where('tanggal_mulai','<=',$refDate)
+                ->groupBy('id_eksemplar');
+            })
+            ->where('b.kelas_akademik','!=','non-akademik')
+            ->distinct('b.id')
+            ->count('b.id');
+        $totalNonAkademik = DB::table('riwayat_status_buku as rs')
+            ->join('buku_eksemplar as e','e.id_eksemplar','=','rs.id_eksemplar')
+            ->join('buku as b','b.id','=','e.buku_id')
+            ->where('rs.tanggal_mulai','<=',$refDate)
+            ->whereIn('rs.id', function ($q) use ($refDate) {
+                $q->select(DB::raw('MAX(id)'))
+                ->from('riwayat_status_buku')
+                ->where('tanggal_mulai','<=',$refDate)
+                ->groupBy('id_eksemplar');
+            })
+            ->where('b.kelas_akademik', 'non-akademik')
+            ->distinct('b.id')
+            ->count('b.id');
+        
+        $roleAktif = snapshot(
+                DB::table('riwayat_role_user as r'),
+                $refDate,
+                'r.tanggal_mulai',
+                'r.tanggal_selesai'
+            );
+        $totalPegawai = (clone $roleAktif)
+            ->whereIn('role',['guru','petugas','kep_perpus','kepsek','admin'])
+            ->distinct('user_id')
+            ->count('user_id');
+        $totalSiswa = (clone $roleAktif)
+            ->where('role','siswa')
+            ->distinct('user_id')
+            ->count('user_id');
+        $totalGuru = (clone $roleAktif)
+            ->where('role','guru')
+            ->distinct('user_id')
+            ->count('user_id');
+        $totalPetugas = (clone $roleAktif)
+            ->whereIn('role',['petugas','kep_perpus'])
+            ->distinct('user_id')
+            ->count('user_id');
+        $kepalaPerpus = snapshot(
+                DB::table('riwayat_role_user as r')
+                    ->join('user as u','u.id_user','=','r.user_id')
+                    ->where('r.role','kep_perpus'),
+                $refDate
+            )
+            ->select('u.*')
+            ->first();
 
         // PEMINJAMAN
         $peminjaman = [];
@@ -91,9 +150,10 @@ class DashboardController extends Controller
             while ($startDate <= $endDate) {
                 $peminjaman[] = [
                     'label' => $startDate->translatedFormat('F Y'),
-                    'total' => Peminjaman::whereYear('tanggal_pinjam', $startDate->year)
-                                ->whereMonth('tanggal_pinjam', $startDate->month)
-                                ->count()
+                    'total' => Peminjaman::whereBetween('tanggal_pinjam', [
+                                    $startDate->copy()->startOfMonth(),
+                                    $startDate->copy()->endOfMonth()
+                                ])->count()
                 ];
 
                 $startDate->addMonth();
@@ -112,49 +172,24 @@ class DashboardController extends Controller
         }
 
         // BUKU
-        $totalStok = BukuEksemplar::count();
+        $statusBuku = snapshot(
+            DB::table('riwayat_status_buku'),
+            $refDate
+        );
 
-        $stokRusak = BukuEksemplar::where('status', 'rusak')->count();
-        $stokHilang = BukuEksemplar::where('status', 'hilang')->count();
-        $stokBaik = BukuEksemplar::where('status', 'baik')
-            ->whereDoesntHave('peminjamanDetail', fn($q) =>$q->where('status_transaksi', 'dipinjam'))
-            ->count();
+        $totalStok  = (clone $statusBuku)->count();
+        $stokBaik   = (clone $statusBuku)->where('status','baik')->count();
+        $stokRusak  = (clone $statusBuku)->where('status','rusak')->count();
+        $stokHilang = (clone $statusBuku)->where('status','hilang')->count();
 
         // LIST BUKU
-        $listBaik = Buku::withCount([
-            'eksemplar as jumlah' => function ($q) {
-                $q->where('status','baik')
-                ->whereDoesntHave('peminjamanDetail', fn($p)=>$p->where('status_transaksi','dipinjam'));
-            }
-        ])->get()
-        ->filter(fn($b)=>$b->jumlah > 0)
-        ->map(function ($buku) {
-            return (object)[
-                'kategori' => match (true) {
-                    $buku->kelas_akademik === '10' => 'Buku Kelas 10',
-                    $buku->kelas_akademik === '11' => 'Buku Kelas 11',
-                    $buku->kelas_akademik === '12' => 'Buku Kelas 12',
-                    $buku->tipe_bacaan === 'fiksi' => 'Buku Fiksi',
-                    default => 'Buku Umum (Non-Fiksi)',
-                },
-                'order_key' => match (true) {
-                    $buku->kelas_akademik === '10' => 1,
-                    $buku->kelas_akademik === '11' => 2,
-                    $buku->kelas_akademik === '12' => 3,
-                    $buku->tipe_bacaan === 'fiksi' => 4,
-                    default => 5,
-                },
-                'judul'     => $buku->judul,
-                'pengarang' => $buku->pengarang,
-                'jumlah'    => $buku->jumlah,
-            ];
-        })
-        ->sortBy('order_key')
-        ->values();
-
-        $listRusak = DB::table('buku_eksemplar as e')
-            ->join('buku as b', 'b.id', '=', 'e.buku_id')
-            ->where('e.status', 'rusak')
+        $listBaik = snapshot(
+                DB::table('riwayat_status_buku as rs'),
+                $refDate
+            )
+            ->join('buku_eksemplar as e','e.id_eksemplar','=','rs.id_eksemplar')
+            ->join('buku as b','b.id','=','e.buku_id')
+            ->where('rs.status','baik')
             ->select(
                 DB::raw("
                     CASE
@@ -167,20 +202,20 @@ class DashboardController extends Controller
                 "),
                 'b.judul',
                 'b.pengarang',
-                DB::raw('COUNT(*) as jumlah')
+                DB::raw('COUNT(DISTINCT rs.id_eksemplar) as jumlah')
             )
             ->groupBy(
-                'b.id',
-                'b.judul',
-                'b.pengarang',
-                'b.kelas_akademik',
-                'b.tipe_bacaan'
+                'b.id','b.judul','b.pengarang','b.kelas_akademik','b.tipe_bacaan'
             )
             ->get();
 
-        $listHilang = DB::table('buku_eksemplar as e')
-            ->join('buku as b', 'b.id', '=', 'e.buku_id')
-            ->where('e.status', 'hilang')
+        $listRusak = snapshot(
+                DB::table('riwayat_status_buku as rs'),
+                $refDate
+            )
+            ->join('buku_eksemplar as e','e.id_eksemplar','=','rs.id_eksemplar')
+            ->join('buku as b','b.id','=','e.buku_id')
+            ->where('rs.status','rusak')
             ->select(
                 DB::raw("
                     CASE
@@ -193,22 +228,20 @@ class DashboardController extends Controller
                 "),
                 'b.judul',
                 'b.pengarang',
-                DB::raw('COUNT(*) as jumlah')
+                DB::raw('COUNT(DISTINCT rs.id_eksemplar) as jumlah')
             )
             ->groupBy(
-                'b.id',
-                'b.judul',
-                'b.pengarang',
-                'b.kelas_akademik',
-                'b.tipe_bacaan'
+                'b.id','b.judul','b.pengarang','b.kelas_akademik','b.tipe_bacaan'
             )
             ->get();
 
-        $listDipinjam = DB::table('peminjaman_detail as d')
-            ->join('peminjaman as p', 'p.id', '=', 'd.peminjaman_id')
-            ->join('buku_eksemplar as e', 'e.id_eksemplar', '=', 'd.eksemplar_id')
-            ->join('buku as b', 'b.id', '=', 'e.buku_id')
-            ->where('d.status_transaksi', 'dipinjam')
+        $listHilang = snapshot(
+                DB::table('riwayat_status_buku as rs'),
+                $refDate
+            )
+            ->join('buku_eksemplar as e','e.id_eksemplar','=','rs.id_eksemplar')
+            ->join('buku as b','b.id','=','e.buku_id')
+            ->where('rs.status','hilang')
             ->select(
                 DB::raw("
                     CASE
@@ -221,16 +254,75 @@ class DashboardController extends Controller
                 "),
                 'b.judul',
                 'b.pengarang',
-                DB::raw('COUNT(*) as jumlah')
+                DB::raw('COUNT(DISTINCT rs.id_eksemplar) as jumlah')
             )
             ->groupBy(
-                'b.id',
-                'b.judul',
-                'b.pengarang',
-                'b.kelas_akademik',
-                'b.tipe_bacaan'
+                'b.id','b.judul','b.pengarang','b.kelas_akademik','b.tipe_bacaan'
             )
             ->get();
+
+        $listDipinjamBiasa = DB::table('peminjaman as p')
+            ->join('peminjaman_detail as d','d.peminjaman_id','=','p.id')
+            ->join('buku_eksemplar as e','e.id_eksemplar','=','d.eksemplar_id')
+            ->join('buku as b','b.id','=','e.buku_id')
+            ->where('p.keterangan','!=','BUKU_WAJIB')
+            ->whereBetween('p.tanggal_pinjam',[$start,$end])
+            ->select(
+                DB::raw("
+                    CASE
+                        WHEN b.kelas_akademik='10' THEN 'Buku Kelas 10'
+                        WHEN b.kelas_akademik='11' THEN 'Buku Kelas 11'
+                        WHEN b.kelas_akademik='12' THEN 'Buku Kelas 12'
+                        WHEN b.tipe_bacaan='fiksi' THEN 'Buku Fiksi'
+                        ELSE 'Buku Umum (Non-Fiksi)'
+                    END AS kategori
+                "),
+                'b.judul',
+                'p.tanggal_pinjam',
+                DB::raw("
+                    CASE
+                        WHEN p.status='dipinjam' THEN 'Belum Dikembalikan'
+                        ELSE 'Sudah Dikembalikan'
+                    END AS status
+                "),
+                DB::raw('COUNT(DISTINCT d.eksemplar_id) as jumlah')
+            )
+            ->groupBy(
+                'b.id','b.judul','b.kelas_akademik','b.tipe_bacaan',
+                'p.tanggal_pinjam','p.status'
+            )
+            ->get();
+
+        $listDipinjamPaket = DB::table('peminjaman as p')
+            ->join('paket_buku as pk', 'pk.id', '=', 'p.paket_id')
+            ->join('peminjaman_detail as d', 'd.peminjaman_id', '=', 'p.id')
+            ->where('p.keterangan', 'BUKU_WAJIB')
+            ->whereBetween('p.tanggal_pinjam', [$start, $end])
+            ->select(
+                DB::raw("'Buku Wajib / Paket' as kategori"),
+                'pk.nama_paket as judul',
+                'p.tanggal_pinjam',
+                DB::raw("
+                    CASE
+                        WHEN p.status = 'dipinjam'
+                            THEN 'Belum Dikembalikan'
+                        ELSE 'Sudah Dikembalikan'
+                    END AS status
+                "),
+                DB::raw('COUNT(d.id) as jumlah')
+            )
+            ->groupBy(
+                'p.id',
+                'pk.nama_paket',
+                'p.tanggal_pinjam',
+                'p.status'
+            )
+            ->get();
+
+        $listDipinjam = $listDipinjamBiasa
+            ->merge($listDipinjamPaket)
+            ->sortBy('tanggal_pinjam')
+            ->values();
 
         // SEBARAN BUKU
         $stokKelas10 = BukuEksemplar::whereHas('buku', fn($q)=>$q->where('kelas_akademik','10'))->count();
@@ -262,17 +354,73 @@ class DashboardController extends Controller
         ];
 
         // USER
-        $userDistribusi = User::select('role', DB::raw('count(*) as total'))
-            ->groupBy('role')->get();
+        $userDistribusi = snapshot(
+                DB::table('riwayat_role_user as r'),
+                $refDate,
+                'r.tanggal_mulai',
+                'r.tanggal_selesai'
+            )
+            ->select('role', DB::raw('COUNT(DISTINCT user_id) as total'))
+            ->groupBy('role')
+            ->get();
 
         // CHART
         $chart1 = $request->chart1;
         $chart2 = $request->chart2;
         $chart3 = $request->chart3;
 
-        $listSiswa = User::with(['kelasAktif'])->where('role', 'siswa')->get();
-        $listGuru    = User::where('role','guru')->get();
-        $listPetugas = User::where('role','petugas')->get();
+        $listSiswa = snapshot(
+                DB::table('riwayat_role_user as r'),
+                $refDate,
+                'r.tanggal_mulai',
+                'r.tanggal_selesai'
+            )
+            ->join('user as u','u.id_user','=','r.user_id')
+            ->leftJoin('riwayat_kelas_siswa as k', function ($join) use ($refDate) {
+                $join->on('k.user_id','=','u.id_user')
+                    ->where('k.tanggal_mulai','<=',$refDate)
+                    ->where(function ($q) use ($refDate) {
+                        $q->whereNull('k.tanggal_selesai')
+                        ->orWhere('k.tanggal_selesai','>=',$refDate);
+                    });
+            })
+            ->where('r.role','siswa')
+            ->select('u.nama','k.tingkat','k.rombel')
+            ->orderBy('k.tingkat')
+            ->orderBy('k.rombel')
+            ->orderBy('u.nama')
+            ->get();
+        $listGuru = snapshot(
+                DB::table('riwayat_role_user as r')
+                    ->join('user as u','u.id_user','=','r.user_id')
+                    ->where('r.role','guru'),
+                $refDate
+            )
+            ->select('u.id_user','u.nama')
+            ->groupBy('u.id_user','u.nama')
+            ->orderBy('u.nama')
+            ->get();
+        $listPetugas = snapshot(
+                DB::table('riwayat_role_user as r'),
+                $refDate,
+                'r.tanggal_mulai',
+                'r.tanggal_selesai'
+            )
+            ->join('user as u','u.id_user','=','r.user_id')
+            ->whereIn('r.role',['kep_perpus','petugas'])
+            ->select(
+                'u.id_user',
+                'u.nama',
+                'r.role'
+            )
+            ->orderByRaw("
+                CASE 
+                    WHEN r.role = 'kep_perpus' THEN 1
+                    ELSE 2
+                END
+            ")
+            ->orderBy('u.nama')
+            ->get();
 
         return Pdf::loadView('admin.report', compact(
             'sections','currentYear',

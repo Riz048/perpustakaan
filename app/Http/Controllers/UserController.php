@@ -82,12 +82,13 @@ class UserController extends Controller
                 ]);
 
                 DB::table('riwayat_kelas_siswa')->insert([
-                    'user_id'      => $user->id_user,
-                    'tingkat'      => $request->tingkat,
-                    'rombel'       => strtoupper($request->rombel),
+                    'user_id' => $user->id_user,
+                    'tingkat' => $request->tingkat,
+                    'rombel' => strtoupper($request->rombel),
                     'tahun_ajaran' => $request->tahun_ajaran,
-                    'semester'     => $request->semester,
-                    'status'       => 'aktif',
+                    'semester' => $request->semester,
+                    'status' => 'aktif',
+                    'tanggal_mulai' => now()->toDateString()
                 ]);
             }
 
@@ -124,16 +125,6 @@ class UserController extends Controller
     {
         $user = User::findOrFail($id);
 
-        $loginRole = auth()->user()->role;
-
-        if (
-            $request->role !== $user->role &&
-            !in_array($loginRole, ['admin','kepsek','kep_perpus'])
-        ) {
-            abort(403, 'Tidak punya hak mengubah role');
-        }
-
-        // validasi dasar
         $request->validate([
             'nama'     => 'required',
             'username' => 'required|unique:user,username,' . $id . ',id_user',
@@ -141,80 +132,72 @@ class UserController extends Controller
         ]);
 
         DB::beginTransaction();
-
         try {
-            // update data user
-            $data = $request->except(['password', 'foto']);
+            $oldRole = $user->role;
 
+            // update user
+            $data = $request->except(['password','foto']);
             if ($request->filled('password')) {
                 $data['password'] = Hash::make($request->password);
             }
-
             if ($request->hasFile('foto')) {
                 if ($user->foto && Storage::disk('public')->exists($user->foto)) {
                     Storage::disk('public')->delete($user->foto);
                 }
-                $data['foto'] = $request->file('foto')->store('foto_users', 'public');
+                $data['foto'] = $request->file('foto')->store('foto_users','public');
             }
 
             $user->update($data);
-            $user->refresh();
 
-            // perubahan role petugas dan != petugas
+            // riwayat role
+            if ($oldRole !== $request->role) {
+                DB::table('riwayat_role_user')
+                    ->where('user_id', $user->id_user)
+                    ->whereNull('tanggal_selesai')
+                    ->update([
+                        'tanggal_selesai' => now()->toDateString()
+                    ]);
+
+                DB::table('riwayat_role_user')->insert([
+                    'user_id' => $user->id_user,
+                    'role' => $request->role,
+                    'tanggal_mulai' => now()->toDateString(),
+                    'tanggal_selesai' => null
+                ]);
+            }
+
+            // sinkron petugas
             if ($request->role === 'petugas') {
                 DB::table('petugas')->updateOrInsert(
                     ['id_pegawai' => $user->id_user],
                     ['status' => 'aktif']
                 );
+            } else {
+                DB::table('petugas')
+                    ->where('id_pegawai', $user->id_user)
+                    ->update(['status' => 'non-aktif']);
             }
 
-            // khusus siswa → ganti kelas aktif
+            // khusus siswa → kelas
             if ($request->role === 'siswa') {
-                $request->validate([
-                    'tingkat' => 'required|in:10,11,12',
-                    'rombel' => 'required|string|max:1',
-                    'tahun_ajaran' => 'required',
-                    'semester' => 'required',
-                ]);
-
-                // nonaktifkan kelas lama
                 DB::table('riwayat_kelas_siswa')
                     ->where('user_id', $user->id_user)
-                    ->where('status', 'aktif')
-                    ->update(['status' => 'lulus']);
+                    ->where('status','aktif')
+                    ->update(['status'=>'lulus']);
 
                 DB::table('riwayat_kelas_siswa')->insert([
-                    'user_id'      => $user->id_user,
-                    'tingkat'      => $request->tingkat,
-                    'rombel'       => strtoupper($request->rombel),
+                    'user_id' => $user->id_user,
+                    'tingkat' => $request->tingkat,
+                    'rombel' => strtoupper($request->rombel),
                     'tahun_ajaran' => $request->tahun_ajaran,
-                    'semester'     => $request->semester,
-                    'status'       => 'aktif',
+                    'semester' => $request->semester,
+                    'status' => 'aktif',
+                    'tanggal_mulai' => now()->toDateString()
                 ]);
             }
 
-            // log aktivitas
-            DB::table('log_user')->insert([
-                'id_user'    => $user->id_user,
-                'role'       => $user->role,
-                'nama'       => $user->nama,
-                'username'   => $user->username,
-                'password'   => '-',
-                'kelamin'    => $user->kelamin,
-                'action'     => 'updated',
-                'changed_on' => now(),
-                'changed_by' => auth()->id(),
-            ]);
-
-            $redirect = match ($request->role) {
-                'siswa' => redirect()->route('users.siswa'),
-                'guru' => redirect()->route('users.guru'),
-                default => redirect()->route('petugas'),
-            };
-
             DB::commit();
-            
-            return $redirect->with('success', 'Data user diperbarui');
+            return back()->with('success','Data user diperbarui');
 
         } catch (\Throwable $e) {
             DB::rollBack();

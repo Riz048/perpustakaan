@@ -83,9 +83,15 @@ class BukuController extends Controller
     {
         $buku = Buku::whereIn('kelas_akademik', ['10', '11', '12'])
             ->withCount([
+                'eksemplar as buku_masuk',
                 'eksemplar as buku_tersedia' => function ($q) {
                     $q->where('status', 'baik')
                     ->whereDoesntHave('peminjamanDetail', function ($p) {
+                        $p->where('status_transaksi', 'dipinjam');
+                    });
+                },
+                'eksemplar as buku_dipinjam' => function ($q) {
+                    $q->whereHas('peminjamanDetail', function ($p) {
                         $p->where('status_transaksi', 'dipinjam');
                     });
                 },
@@ -103,9 +109,15 @@ class BukuController extends Controller
     {
         $buku = Buku::where('kelas_akademik', 'non-akademik')
             ->withCount([
+                'eksemplar as buku_masuk',
                 'eksemplar as buku_tersedia' => function ($q) {
                     $q->where('status', 'baik')
                     ->whereDoesntHave('peminjamanDetail', function ($p) {
+                        $p->where('status_transaksi', 'dipinjam');
+                    });
+                },
+                'eksemplar as buku_dipinjam' => function ($q) {
+                    $q->whereHas('peminjamanDetail', function ($p) {
                         $p->where('status_transaksi', 'dipinjam');
                     });
                 },

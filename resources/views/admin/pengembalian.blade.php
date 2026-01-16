@@ -78,7 +78,7 @@
                             <th>ID</th>
                             <th>Jenis</th>
                             <th>Judul Buku</th>
-                            <th>Tanggal</th>
+                            <th>Tanggal Kembali</th>
                             <th>Status</th>
                             <th>Peminjam</th>
                             <th>Status Buku</th>
@@ -102,7 +102,7 @@
                             $isLate = $tglKembali->gt($batasWaktu);
                             $statusLabel = $isLate ? 'Terlambat' : 'Tepat Waktu';
                             $statusBadge = $isLate ? 'danger' : 'success';
-                            $diffDays = $isLate ? $tglKembali->diffInDays($batasWaktu) . ' Hari' : '';
+                            $diffDays = $isLate ? $batasWaktu->diffInDays($tglKembali) . ' hari' : '';
                         @endphp
 
                         <tr>
@@ -110,13 +110,13 @@
                                 PMJ-{{ $item->peminjaman_id }}
                             </td>
 
-                        <td>
-                            @if($item->peminjaman->keterangan === 'BUKU_WAJIB')
-                                <span class="badge badge-info">Buku Wajib</span>
-                            @else
-                                <span class="badge badge-secondary">Biasa</span>
-                            @endif
-                        </td>
+                            <td>
+                                @if($item->peminjaman->keterangan === 'BUKU_WAJIB')
+                                    <span class="badge badge-info">Buku Wajib</span>
+                                @else
+                                    <span class="badge badge-secondary">Biasa</span>
+                                @endif
+                            </td>
 
                             <td>
                                 <span style="display:none">
@@ -136,8 +136,8 @@
                             
                             <td>
                                 <span class="badge badge-{{ $statusBadge }}">{{ $statusLabel }}</span>
-                                @if($isLate) 
-                                    <div class="small text-danger mt-1 font-weight-bold">+{{ $diffDays }}</div> 
+                                @if($isLate)
+                                    <div class="small text-danger mt-1 font-weight-bold">{{ $diffDays }}</div>
                                 @endif
                             </td>
 
@@ -429,7 +429,7 @@ $(document).ready(function () {
     });
 
     $("#filterStatus").on("change", function () {
-        table.column(3).search($(this).val()).draw();
+        table.column(4).search($(this).val()).draw();
     });
 
     $("#filterJenis").on("change", function () {
