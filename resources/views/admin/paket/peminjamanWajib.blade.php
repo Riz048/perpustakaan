@@ -28,6 +28,15 @@
 
     {{-- FILTER --}}
     <form method="GET" class="row mb-3">
+
+        <div class="col-md-3">
+            <select name="target" class="form-control" required>
+                <option value="">Pilih Target</option>
+                <option value="siswa" {{ request('target')=='siswa'?'selected':'' }}>Siswa</option>
+                <option value="guru" {{ request('target')=='guru'?'selected':'' }}>Guru</option>
+            </select>
+        </div>
+
         <div class="col-md-3">
             <select name="kelas" class="form-control" required>
                 <option value="">Pilih Kelas</option>
@@ -47,6 +56,7 @@
         <div class="col-md-3">
             <button class="btn btn-primary">Tampilkan</button>
         </div>
+        
     </form>
 
     {{-- JIKA FILTER DIISI TAPI PAKET TIDAK ADA --}}
@@ -80,6 +90,16 @@
         <div class="alert alert-info">
             Paket aktif: <strong>{{ $paket->nama_paket }}</strong>
         </div>
+
+        @if(request('target') === 'siswa')
+        <div class="col-md-3">
+            <input type="text" name="rombel"
+                class="form-control"
+                placeholder="Rombel"
+                value="{{ request('rombel') }}"
+                required>
+        </div>
+        @endif
 
         @if($siswa->isEmpty())
             <div class="alert alert-warning">

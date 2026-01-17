@@ -53,7 +53,6 @@
                         @foreach ($users as $user)
                         <tr>
                             <td>{{ $user->id_user }}</td>
-                            </td>
                             <td>{{ $user->nama }}</td>
                             <td>{{ $user->username }}</td>
                             <td>{{ optional($user->kelasAktif)->tingkat }}-{{ optional($user->kelasAktif)->rombel }}</td>
@@ -138,7 +137,8 @@
                         <div class="form-row">
                             <div class="form-group col-md-4">
                                 <label>Tingkat</label>
-                                <select name="tingkat" class="form-control" required>
+                                <select name="tingkat" id="tingkatSiswa" class="form-control" required>
+                                    <option value="">Pilih Tingkat</option>
                                     <option value="10">10</option>
                                     <option value="11">11</option>
                                     <option value="12">12</option>
@@ -146,16 +146,8 @@
                             </div>
                             <div class="form-group col-md-4">
                                 <label>Rombel</label>
-                                <select name="rombel" class="form-control" required>
-                                    <option value="1">1</option>
-                                    <option value="2">2</option>
-                                    <option value="3">3</option>
-                                    <option value="4">4</option>
-                                    <option value="5">5</option>
-                                    <option value="6">6</option>
-                                    <option value="7">7</option>
-                                    <option value="8">8</option>
-                                    <option value="9">9</option>
+                                <select name="rombel" id="rombelSiswa" class="form-control" required disabled>
+                                    <option value="">Pilih Rombel</option>
                                 </select>
                             </div>
                             <div class="form-group col-md-4">
@@ -258,6 +250,7 @@
                             <div class="form-group col-md-4">
                                 <label>Tingkat</label>
                                 <select name="tingkat" id="editTingkat" class="form-control" required>
+                                    <option value="">Pilih Tingkat</option>
                                     <option value="10">10</option>
                                     <option value="11">11</option>
                                     <option value="12">12</option>
@@ -266,15 +259,7 @@
                             <div class="form-group col-md-4">
                                 <label>Rombel</label>
                                 <select name="rombel" id="editRombel" class="form-control" required>
-                                    <option value="1">1</option>
-                                    <option value="2">2</option>
-                                    <option value="3">3</option>
-                                    <option value="4">4</option>
-                                    <option value="5">5</option>
-                                    <option value="6">6</option>
-                                    <option value="7">7</option>
-                                    <option value="8">8</option>
-                                    <option value="9">9</option>
+                                    <option value="">Pilih Rombel</option>
                                 </select>
                             </div>
                             <div class="form-group col-md-4">
@@ -327,6 +312,59 @@
 
 @section('script')
 <script>
+const rombelMap = {
+    10: [1,2,3,4,5,6,7,8,9],
+    11: [1,2,3,4,5,6,7,8,9],
+    12: [1,2,3,4,5,6,7,8,9],
+};
+
+// CREATE
+const tingkatSiswa = document.getElementById('tingkatSiswa');
+if (tingkatSiswa) {
+    tingkatSiswa.addEventListener('change', function () {
+        fillRombel(this.value, 'rombelSiswa');
+    });
+}
+
+// EDIT
+const editTingkat = document.getElementById('editTingkat');
+if (editTingkat) {
+    editTingkat.addEventListener('change', function () {
+        populateEditRombel(this.value);
+    });
+}
+
+function fillRombel(tingkat, targetId) {
+    const select = document.getElementById(targetId);
+    select.innerHTML = '<option value="">Pilih Rombel</option>';
+    if (!tingkat) return;
+
+    rombelMap[tingkat].forEach(r => {
+        const opt = document.createElement('option');
+        opt.value = r;
+        opt.textContent = `${tingkat}-${r}`;
+        select.appendChild(opt);
+    });
+
+    select.disabled = false;
+}
+
+function populateEditRombel(tingkat, rombelAktif = null) {
+    const select = document.getElementById('editRombel');
+    select.innerHTML = '<option value="">Pilih Rombel</option>';
+    if (!tingkat) return;
+
+    rombelMap[tingkat].forEach(r => {
+        const opt = document.createElement('option');
+        opt.value = r;
+        opt.textContent = `${tingkat}-${r}`;
+        if (rombelAktif && r == rombelAktif) opt.selected = true;
+        select.appendChild(opt);
+    });
+}
+</script>
+
+<script>
     function loadEditUser(
         id, role, username, nama, kelamin, tempat, tanggal, telpon, alamat, tingkat, rombel, tahun, semester
     ) {
@@ -336,22 +374,23 @@
 
         // user
         $('#editIdUser').val(id);
-        $('#editRole').val(role);
         $('#editUsername').val(username);
         $('#editNama').val(nama);
         $('#editKelamin').val(kelamin);
         $('#editTempatLahir').val(tempat);
-        $('#editTanggalLahir').val(tanggal.split(' ')[0]);
+        $('#editTanggalLahir').val(tanggal ? tanggal.split(' ')[0] : '');
         $('#editTelpon').val(telpon);
         $('#editAlamat').val(alamat);
         $('#editTingkat').val(tingkat);
-        $('#editRombel').val(rombel);
+        populateEditRombel(tingkat, rombel);
         $('#editTahunAjaran').val(tahun);
         $('#editSemester').val(semester);
 
         // kelas siswa
         if (role === 'siswa') {
             $('#editFormKelasSiswa').show();
+        } else {
+            $('#editFormKelasSiswa').hide();
         }
     }
 
@@ -360,14 +399,6 @@
             $('#dataTable').DataTable().destroy();
         }
         $('#dataTable').DataTable();
-    });
-
-    $('#editRole').on('change', function () {
-        if (this.value === 'siswa') {
-            $('#editFormKelasSiswa').show();
-        } else {
-            $('#editFormKelasSiswa').hide();
-        }
     });
 </script>
 

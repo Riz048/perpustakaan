@@ -4,25 +4,25 @@
 
 @section('konten')
 <div class="container-fluid">
-    
+
     {{-- NOTIF ERROR --}}
     @if (session('success'))
     <div id="pageAlert" class="alert alert-success alert-dismissible fade show" role="alert">
-    <i class="fas fa-check-circle mr-1"></i>
-    {{ session('success') }}
-    <button type="button" class="close" data-dismiss="alert">
-        <span>&times;</span>
-    </button>
+        <i class="fas fa-check-circle mr-1"></i>
+        {{ session('success') }}
+        <button type="button" class="close" data-dismiss="alert">
+            <span>&times;</span>
+        </button>
     </div>
     @endif
 
     @if ($errors->any())
     <div id="pageAlert" class="alert alert-danger alert-dismissible fade show" role="alert">
-    <i class="fas fa-exclamation-circle mr-1"></i>
-    {{ $errors->first() }}
-    <button type="button" class="close" data-dismiss="alert">
-        <span>&times;</span>
-    </button>
+        <i class="fas fa-exclamation-circle mr-1"></i>
+        {{ $errors->first() }}
+        <button type="button" class="close" data-dismiss="alert">
+            <span>&times;</span>
+        </button>
     </div>
     @endif
 
@@ -33,7 +33,7 @@
         </h1>
 
         <div>
-            <button form="form-paket"class="btn btn-primary" {{ $bukus->count() === 0 ? 'disabled' : '' }}>
+            <button form="form-paket" class="btn btn-primary" {{ $bukus->count() === 0 ? 'disabled' : '' }}>
                 <i class="fas fa-save"></i>
                 {{ isset($paket) ? 'Update Paket' : 'Simpan Paket' }}
             </button>
@@ -43,43 +43,64 @@
         </div>
     </div>
 
-    <form id="form-paket"
-          action="{{ isset($paket) ? route('paket.update', $paket->id) : route('paket.store') }}"
-          method="POST">
+    <form id="form-paket" action="{{ isset($paket) ? route('paket.update', $paket->id) : route('paket.store') }}"
+        method="POST">
         @csrf
         @isset($paket)
-            @method('PUT')
+        @method('PUT')
         @endisset
 
         {{-- INFORMASI PAKET --}}
         <div class="card mb-4">
             <div class="card-header"><strong>Informasi Paket</strong></div>
-            <div class="card-body row">
+            <div class="card-body">
 
-                <div class="col-md-4">
-                    <label>Nama Paket</label>
-                    <input type="text" name="nama_paket" class="form-control"
-                        value="{{ old('nama_paket', $paket->nama_paket ?? '') }}" required>
+                {{-- ROW 1 --}}
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label>Nama Paket</label>
+                        <input type="text" name="nama_paket" class="form-control"
+                            value="{{ old('nama_paket', $paket->nama_paket ?? '') }}" required>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label>Target Peminjaman</label>
+                        <select name="target" class="form-control" required>
+                            <option value="siswa" {{ old('target',$paket->target ?? '')=='siswa'?'selected':'' }}>Siswa</option>
+                            <option value="guru" {{ old('target',$paket->target ?? '')=='guru'?'selected':'' }}>Guru</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label>Tahun Ajaran</label>
+                        <input type="text" name="tahun_ajaran" class="form-control"
+                            value="{{ old('tahun_ajaran', $paket->tahun_ajaran ?? '') }}" required>
+                    </div>
                 </div>
 
-                <div class="col-md-4">
-                    <label>Kelas</label>
-                    <select name="kelas" class="form-control" required>
-                        <option value="">-- pilih --</option>
-                        @foreach(['10','11','12'] as $k)
-                            <option value="{{ $k }}"
-                                {{ old('kelas', $paket->kelas ?? '') == $k ? 'selected' : '' }}>
-                                Kelas {{ $k }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
+                {{-- ROW 2 --}}
+                <div class="row">
+                    <div class="col-md-4">
+                        <label>Kelas</label>
+                        <select name="kelas" class="form-control" required>
+                            <option value="">-- pilih --</option>
+                            @foreach(['10','11','12'] as $k)
+                                <option value="{{ $k }}"
+                                    {{ old('kelas', $paket->kelas ?? '') == $k ? 'selected' : '' }}>
+                                    Kelas {{ $k }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
 
-                <div class="col-md-4">
-                    <label>Tahun Ajaran</label>
-                    <input type="text" name="tahun_ajaran" class="form-control"
-                        placeholder="2025/2026"
-                        value="{{ old('tahun_ajaran', $paket->tahun_ajaran ?? '') }}" required>
+                    <div class="col-md-4" id="formRombel" style="display:none;">
+                        <label>Rombel</label>
+                        <select name="rombel" id="rombelPaket" class="form-control">
+                            <option value="">Pilih Rombel</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-4"></div>
                 </div>
 
             </div>
@@ -90,8 +111,7 @@
             <div class="card-header"><strong>Filter Buku</strong></div>
             <div class="card-body row">
                 <div class="col-md-6">
-                    <input type="text" id="searchBuku" class="form-control"
-                        placeholder="Cari judul buku...">
+                    <input type="text" id="searchBuku" class="form-control" placeholder="Cari judul buku...">
                 </div>
 
                 <div class="col-md-6">
@@ -117,11 +137,11 @@
 
             <div class="card-body p-0">
                 @if($bukus->count() === 0)
-                    <div class="alert alert-warning mb-3">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <strong>Belum ada data buku.</strong><br>
-                        Tambahkan data buku terlebih dahulu sebelum membuat paket.
-                    </div>
+                <div class="alert alert-warning mb-3">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Belum ada data buku.</strong><br>
+                    Tambahkan data buku terlebih dahulu sebelum membuat paket.
+                </div>
                 @endif
 
                 <table class="table table-bordered table-hover mb-0" id="tableBuku">
@@ -137,55 +157,47 @@
                     </thead>
                     <tbody>
                         @forelse($bukus as $buku)
-                            @php
-                                $detail = isset($paket)
-                                    ? $paket->detail->firstWhere('buku_id', $buku->id)
-                                    : null;
-                            @endphp
+                        @php
+                        $detail = isset($paket)
+                        ? $paket->detail->firstWhere('buku_id', $buku->id)
+                        : null;
+                        @endphp
 
-                            <tr id="emptyFilterRow" style="display:none;">
-                                <td colspan="4" class="text-center py-4 text-muted">
-                                    <i class="fas fa-search"></i><br>
-                                    Tidak ada buku yang sesuai dengan filter.
-                                </td>
-                            </tr>
+                        <tr id="emptyFilterRow" style="display:none;">
+                            <td colspan="4" class="text-center py-4 text-muted">
+                                <i class="fas fa-search"></i><br>
+                                Tidak ada buku yang sesuai dengan filter.
+                            </td>
+                        </tr>
 
-                            <tr class="buku-row"
-                                data-judul="{{ strtolower($buku->judul) }}"
-                                data-kategori="{{ $buku->kelas_akademik }}">
-                                <td class="text-center">
-                                    <input type="checkbox"
-                                        class="check-buku"
-                                        name="buku_id[]"
-                                        value="{{ $buku->id }}"
-                                        {{ old('buku_id')
+                        <tr class="buku-row" data-judul="{{ strtolower($buku->judul) }}"
+                            data-kategori="{{ $buku->kelas_akademik }}">
+                            <td class="text-center">
+                                <input type="checkbox" class="check-buku" name="buku_id[]" value="{{ $buku->id }}" {{ old('buku_id')
                                                 ? in_array($buku->id, old('buku_id', []))
                                                 : ($detail ? 'checked' : '') }}>
-                                </td>
-                                <td>{{ $buku->judul }}</td>
-                                <td>
-                                    <span class="badge badge-info">
-                                        {{ $buku->kelas_akademik === 'non-akademik'
+                            </td>
+                            <td>{{ $buku->judul }}</td>
+                            <td>
+                                <span class="badge badge-info">
+                                    {{ $buku->kelas_akademik === 'non-akademik'
                                             ? 'Non Akademik'
                                             : 'Kelas '.$buku->kelas_akademik }}
-                                    </span>
-                                </td>
-                                <td>
-                                    <input type="number"
-                                        name="jumlah[{{ $buku->id }}]"
-                                        class="form-control jumlah-input"
-                                        min="1"
-                                        value="{{ old('jumlah.'.$buku->id, $detail->jumlah ?? 1) }}">
-                                </td>
-                            </tr>
+                                </span>
+                            </td>
+                            <td>
+                                <input type="number" name="jumlah[{{ $buku->id }}]" class="form-control jumlah-input"
+                                    min="1" value="{{ old('jumlah.'.$buku->id, $detail->jumlah ?? 1) }}">
+                            </td>
+                        </tr>
                         @empty
-                            <tr>
-                                <td colspan="4" class="text-center py-4 text-muted">
-                                    <i class="fas fa-info-circle"></i>
-                                    Belum ada data buku.<br>
-                                    Silakan tambahkan buku terlebih dahulu sebelum membuat paket.
-                                </td>
-                            </tr>
+                        <tr>
+                            <td colspan="4" class="text-center py-4 text-muted">
+                                <i class="fas fa-info-circle"></i>
+                                Belum ada data buku.<br>
+                                Silakan tambahkan buku terlebih dahulu sebelum membuat paket.
+                            </td>
+                        </tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -197,10 +209,61 @@
 
 {{-- SCRIPT --}}
 <script>
-    const searchInput   = document.getElementById('searchBuku');
-    const filterSelect  = document.getElementById('filterKategori');
-    const checkAllBox   = document.getElementById('checkAll');
-    const totalDipilih  = document.getElementById('totalDipilih');
+    const rombelMap = {
+        10: [1,2,3,4,5,6,7,8,9],
+        11: [1,2,3,4,5,6,7,8,9],
+        12: [1,2,3,4,5,6,7,8,9],
+    };
+
+    const kelasSelect  = document.querySelector('select[name="kelas"]');
+    const targetSelect = document.querySelector('select[name="target"]');
+    const rombelSelect = document.getElementById('rombelPaket');
+    const rombelWrap   = document.getElementById('formRombel');
+
+    function renderRombel(selected = null) {
+        rombelSelect.innerHTML = '<option value="">Pilih Rombel</option>';
+        if (!kelasSelect.value) return;
+
+        rombelMap[kelasSelect.value].forEach(r => {
+            const opt = document.createElement('option');
+            opt.value = r;
+            opt.textContent = `${kelasSelect.value}-${r}`;
+            if (String(r) === String(selected)) opt.selected = true;
+            rombelSelect.appendChild(opt);
+        });
+    }
+
+    function syncRombel() {
+        const isSiswa = targetSelect.value === 'siswa';
+
+        rombelWrap.style.display = isSiswa ? '' : 'none';
+        rombelSelect.disabled   = !isSiswa;
+        rombelSelect.required   = isSiswa;
+
+        if (!isSiswa) return;
+
+        const selectedRombel = "{{ old('rombel', $paket->rombel ?? '') }}";
+        renderRombel(selectedRombel);
+    }
+
+    kelasSelect.addEventListener('change', () => {
+        if (targetSelect.value === 'siswa') {
+            renderRombel();
+        }
+    });
+
+    targetSelect.addEventListener('change', syncRombel);
+
+    document.addEventListener('DOMContentLoaded', function () {
+        syncRombel();
+    });
+</script>
+
+<script>
+    const searchInput = document.getElementById('searchBuku');
+    const filterSelect = document.getElementById('filterKategori');
+    const checkAllBox = document.getElementById('checkAll');
+    const totalDipilih = document.getElementById('totalDipilih');
 
     searchInput.addEventListener('keyup', filterBuku);
     filterSelect.addEventListener('change', filterBuku);
@@ -211,15 +274,15 @@
     });
 
     function filterBuku() {
-        const keyword  = searchInput.value.toLowerCase();
+        const keyword = searchInput.value.toLowerCase();
         const kategori = filterSelect.value;
         let visibleCount = 0;
 
         document.querySelectorAll('.buku-row').forEach(row => {
             const judul = row.dataset.judul;
-            const kat   = row.dataset.kategori;
+            const kat = row.dataset.kategori;
 
-            const matchJudul    = judul.includes(keyword);
+            const matchJudul = judul.includes(keyword);
             const matchKategori = !kategori || kat === kategori;
 
             const visible = matchJudul && matchKategori;
@@ -247,9 +310,9 @@
 
     function sortCheckedToTop() {
         const tbody = document.querySelector('#tableBuku tbody');
-        const rows  = Array.from(tbody.querySelectorAll('.buku-row'));
+        const rows = Array.from(tbody.querySelectorAll('.buku-row'));
 
-        const checkedRows   = rows.filter(row =>
+        const checkedRows = rows.filter(row =>
             row.querySelector('.check-buku').checked
         );
         const uncheckedRows = rows.filter(row =>
@@ -266,9 +329,14 @@
     }
 
     updateTotal();
-    sortCheckedToTop();
+    checkAllBox.addEventListener('change', () => {
+        toggleAll();
+        sortCheckedToTop();
+    });
+</script>
 
-    document.addEventListener('DOMContentLoaded', function () {
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
         const alertBox = document.getElementById('pageAlert');
         if (!alertBox) return;
 

@@ -11,14 +11,34 @@ use Illuminate\Database\QueryException;
 
 class PaketBukuController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $tahunTerbaru = PaketBuku::max('tahun_ajaran');
+
         $pakets = PaketBuku::withSum('detail as total_buku', 'jumlah')
-            ->orderBy('tahun_ajaran', 'desc')
+
+            ->when($request->filled('target'),
+                fn ($q) => $q->where('target', $request->target)
+            )
+
+            ->when($request->filled('kelas'),
+                fn ($q) => $q->where('kelas', $request->kelas)
+            )
+
+            ->when(
+                $request->filled('rombel') && $request->target === 'siswa',
+                fn ($q) => $q->where('rombel', $request->rombel)
+            )
+
+            ->when($request->filled('tahun'),
+                fn ($q) => $q->where('tahun_ajaran', $request->tahun)
+            )
+
             ->orderBy('kelas')
+            ->orderByRaw('CAST(rombel AS UNSIGNED)')
             ->get();
 
-        return view('admin.paket.index', compact('pakets'));
+        return view('admin.paket.index', compact('pakets', 'tahunTerbaru'));
     }
 
     public function create()
@@ -33,6 +53,10 @@ class PaketBukuController extends Controller
         $request->validate([
             'nama_paket'   => 'required|string|max:100',
             'kelas'        => 'required|in:10,11,12',
+            'rombel'       => $request->target === 'siswa'
+                              ? 'required|string|max:10'
+                              : 'nullable|string|max:10',
+            'target'       => 'required|in:siswa,guru',
             'tahun_ajaran' => 'required|string|max:9',
             'buku_id'      => 'required|array|min:1',
         ]);
@@ -41,14 +65,24 @@ class PaketBukuController extends Controller
         try {
 
             // Nonaktif paket lama
-            PaketBuku::where('kelas', $request->kelas)
+            $oldPaket = PaketBuku::where('kelas', $request->kelas)
                 ->where('tahun_ajaran', $request->tahun_ajaran)
-                ->update(['status_paket' => 'nonaktif']);
+                ->where('target', $request->target);
+
+            if ($request->target === 'siswa') {
+                $oldPaket->where('rombel', $request->rombel);
+            }
+
+            $oldPaket->update(['status_paket' => 'nonaktif']);
 
             // Buat paket baru
             $paket = PaketBuku::create([
                 'nama_paket'   => $request->nama_paket,
                 'kelas'        => $request->kelas,
+                'rombel'       => $request->target === 'siswa'
+                                  ? $request->rombel
+                                  : null,
+                'target'       => $request->target,
                 'tahun_ajaran' => $request->tahun_ajaran,
                 'status_paket' => 'aktif',
             ]);
@@ -86,6 +120,10 @@ class PaketBukuController extends Controller
         $request->validate([
             'nama_paket'   => 'required|string|max:100',
             'kelas'        => 'required|in:10,11,12',
+            'rombel'       => $request->target === 'siswa'
+                              ? 'required|string|max:10'
+                              : 'nullable|string|max:10',
+            'target'       => 'required|in:siswa,guru',
             'tahun_ajaran' => 'required|string|max:9',
             'buku_id'      => 'required|array|min:1',
         ]);
@@ -94,20 +132,14 @@ class PaketBukuController extends Controller
 
             $paket = PaketBuku::findOrFail($id);
 
-            if (
-                $paket->kelas !== $request->kelas ||
-                $paket->tahun_ajaran !== $request->tahun_ajaran
-            ) {
-                PaketBuku::where('kelas', $request->kelas)
-                    ->where('tahun_ajaran', $request->tahun_ajaran)
-                    ->update(['status_paket' => 'nonaktif']);
-            }
-
             $paket->update([
                 'nama_paket'   => $request->nama_paket,
                 'kelas'        => $request->kelas,
+                'rombel'       => $request->target === 'siswa'
+                                    ? $request->rombel
+                                    : null,
+                'target'       => $request->target,
                 'tahun_ajaran' => $request->tahun_ajaran,
-                'status_paket' => 'aktif',
             ]);
 
             PaketBukuDetail::where('paket_id', $paket->id)->delete();
@@ -135,9 +167,16 @@ class PaketBukuController extends Controller
             if ($paket->status_paket === 'aktif') {
                 $paket->update(['status_paket' => 'nonaktif']);
             } else {
-                PaketBuku::where('kelas', $paket->kelas)
+
+                $oldPaket = PaketBuku::where('kelas', $paket->kelas)
                     ->where('tahun_ajaran', $paket->tahun_ajaran)
-                    ->update(['status_paket' => 'nonaktif']);
+                    ->where('target', $paket->target);
+
+                if ($paket->target === 'siswa') {
+                    $oldPaket->where('rombel', $paket->rombel);
+                }
+
+                $oldPaket->update(['status_paket' => 'nonaktif']);
 
                 $paket->update(['status_paket' => 'aktif']);
             }

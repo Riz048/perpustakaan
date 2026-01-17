@@ -13,12 +13,14 @@ class PaketBuku extends Model
     protected $fillable = [
         'nama_paket',
         'kelas',
+        'rombel',
+        'target',
         'tahun_ajaran',
         'status_paket',
     ];
 
     protected $attributes = [
-        'status_paket' => 'nonaktif',
+        'status_paket' => 'aktif',
     ];
 
     public function detail()

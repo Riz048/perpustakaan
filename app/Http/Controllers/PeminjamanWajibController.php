@@ -21,27 +21,47 @@ class PeminjamanWajibController extends Controller
         $siswa = collect();
         $generated = collect();
 
-        if ($request->filled('kelas') && $request->filled('tahun')) {
+        if (
+            $request->filled('kelas') &&
+            $request->filled('tahun') &&
+            $request->filled('target') &&
+            ($request->target === 'guru' || $request->filled('rombel'))
+        ) {
+            if ($request->filled('kelas') && $request->filled('tahun')) {
 
-            $paket = PaketBuku::where('kelas', $request->kelas)
-                ->where('tahun_ajaran', $request->tahun)
-                ->where('status_paket', 'aktif')
-                ->first();
+                $paketQuery = PaketBuku::where('kelas',$request->kelas)
+                    ->where('tahun_ajaran',$request->tahun)
+                    ->where('target',$request->target)
+                    ->where('status_paket','aktif');
 
-            if ($paket) {
-                $siswa = User::with('kelasAktif')
-                    ->where('role', 'siswa')
-                    ->whereHas('kelasAktif', function ($q) use ($request) {
-                        $q->where('status','aktif')
-                        ->where('tingkat',$request->kelas);
-                    })
-                    ->orderBy('nama')
-                    ->get();
+                if ($request->target === 'siswa') {
+                    $paketQuery->where('rombel',$request->rombel);
+                }
 
-                $generated = Peminjaman::where('keterangan', 'BUKU_WAJIB')
-                    ->where('paket_id', $paket->id)
-                    ->where('status', 'dipinjam')
-                    ->pluck('id_user');
+                $paket = $paketQuery->first();
+
+                if ($request->target === 'guru') {
+                    $siswa = User::where('role','guru')
+                        ->orderBy('nama')
+                        ->get();
+                } else {
+                    $siswa = User::with('kelasAktif')
+                        ->where('role','siswa')
+                        ->whereHas('kelasAktif', function ($q) use ($request) {
+                            $q->where('status','aktif')
+                            ->where('tingkat', $request->kelas)
+                            ->where('rombel', $request->rombel);
+                        })
+                        ->orderBy('nama')
+                        ->get();
+
+                    if ($paket) {
+                        $generated = Peminjaman::where('keterangan','BUKU_WAJIB')
+                            ->where('paket_id',$paket->id)
+                            ->where('status','dipinjam')
+                            ->pluck('id_user');
+                    }
+                }
             }
         }
 
@@ -118,8 +138,10 @@ class PeminjamanWajibController extends Controller
 
         // sukses
         return redirect()->route('peminjaman.wajib.index', [
-            'kelas' => $paket->kelas,
-            'tahun' => $paket->tahun_ajaran,
+            'kelas'  => $paket->kelas,
+            'rombel' => $paket->rombel,
+            'tahun'  => $paket->tahun_ajaran,
+            'target' => $paket->target,
         ])->with('success', 'Peminjaman buku wajib berhasil diproses.');
     }
 }
