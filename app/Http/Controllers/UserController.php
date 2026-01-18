@@ -4,6 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Peminjaman;
 use App\Models\User;
+use App\Exports\SiswaTemplateExport;
+use App\Imports\SiswaImport;
+use App\Exports\GuruTemplateExport;
+use App\Imports\GuruImport;
+use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -239,5 +244,47 @@ class UserController extends Controller
             ->get();
 
         return view('user.transaksi.riwayat', compact('riwayat'));
+    }
+
+    public function downloadTemplateSiswa()
+    {
+        return Excel::download(new SiswaTemplateExport, 'template_import_siswa.xlsx');
+    }
+
+    public function importSiswa(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx|max:2048',
+        ]);
+
+        $import = new SiswaImport();
+        Excel::import($import, $request->file('file'));
+
+        if (!empty($import->errors)) {
+            return back()->with('error_import', $import->errors);
+        }
+
+        return back()->with('success', 'Data siswa berhasil diimport');
+    }
+
+    public function downloadTemplateGuru()
+    {
+        return Excel::download(new GuruTemplateExport, 'template_import_guru.xlsx');
+    }
+
+    public function importGuru(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx|max:2048'
+        ]);
+
+        $import = new GuruImport();
+        Excel::import($import, $request->file('file'));
+
+        if (!empty($import->errors)) {
+            return back()->with('error_import', $import->errors);
+        }
+
+        return back()->with('success','Data guru berhasil diimport');
     }
 }

@@ -6,32 +6,48 @@
 <div class="container-fluid">
     
     @if (session('success'))
-    <div id="pageAlert" class="alert alert-success alert-dismissible fade show" role="alert">
-    <i class="fas fa-check-circle mr-1"></i>
-    {{ session('success') }}
-    <button type="button" class="close" data-dismiss="alert">
-        <span>&times;</span>
-    </button>
-    </div>
+        <div id="pageAlert" class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="fas fa-check-circle mr-1"></i>
+        {{ session('success') }}
+        <button type="button" class="close" data-dismiss="alert">
+            <span>&times;</span>
+        </button>
+        </div>
     @endif
 
     @if ($errors->any())
-    <div id="pageAlert" class="alert alert-danger alert-dismissible fade show" role="alert">
-    <i class="fas fa-exclamation-circle mr-1"></i>
-    {{ $errors->first() }}
-    <button type="button" class="close" data-dismiss="alert">
-        <span>&times;</span>
-    </button>
+        <div id="pageAlert" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="fas fa-exclamation-circle mr-1"></i>
+        {{ $errors->first() }}
+        <button type="button" class="close" data-dismiss="alert">
+            <span>&times;</span>
+        </button>
+        </div>
+    @endif
+
+    @if(session('error_import'))
+    <div id="pageAlert" class="alert alert-warning">
+        <strong>Beberapa data gagal diimport:</strong><br>
+        @foreach(session('error_import') as $err)
+        {{ $err }}<br>
+        @endforeach
     </div>
     @endif
 
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h1 class="h3 mb-0 font-weight-bold text-gray-800">Tabel Guru</h1>
-        @if(Auth::user()->role != 'kepsek')
-        <button class="btn btn-primary shadow-sm" data-toggle="modal" data-target="#modalTambahUser">
-            <i class="fas fa-user-plus mr-1"></i> Tambah Guru
-        </button>
-        @endif
+
+        <div>
+            <button class="btn btn-success shadow-sm" data-toggle="modal" data-target="#modalImportGuru">
+                <i class="fas fa-file-import mr-1"></i> Import Guru (Excel)
+            </button>
+
+            @if(Auth::user()->role != 'kepsek')
+            <button class="btn btn-primary shadow-sm" data-toggle="modal" data-target="#modalTambahUser">
+                <i class="fas fa-user-plus mr-1"></i> Tambah Guru
+            </button>
+            @endif
+        </div>
     </div>
 
     <div class="card fade-in mb-4">
@@ -247,6 +263,46 @@
                     <button type="submit" class="btn btn-warning text-white">Update</button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalImportGuru" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title font-weight-bold">Import Data Guru (Excel)</h5>
+                <button class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+
+            <div class="modal-body">
+                <div class="alert alert-secondary">
+                    <strong>Perhatian:</strong>
+                    <ul class="mb-0">
+                        <li>Gunakan template resmi (jangan ubah header)</li>
+                        <li>Kelamin: Pria / Wanita</li>
+                    </ul>
+                </div>
+
+                <a href="{{ route('template.guru') }}" class="btn btn-success btn-block mb-3">
+                    <i class="fas fa-download mr-1"></i> Download Template Excel
+                </a>
+
+                <form action="{{ route('users.import.guru') }}" method="POST" enctype="multipart/form-data">
+                    @csrf
+                    <div class="form-group">
+                        <label>Upload File Excel (.xlsx)</label>
+                        <input type="file" name="file" class="form-control" accept=".xlsx" required>
+                        <small class="text-muted">
+                            Gunakan template resmi. Jangan ubah nama kolom.
+                        </small>
+                    </div>
+
+                    <button class="btn btn-info btn-block text-white">
+                        <i class="fas fa-upload mr-1"></i> Import Sekarang
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
 </div>

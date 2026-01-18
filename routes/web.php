@@ -141,5 +141,12 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/kurikulum/peminjaman', [PeminjamanWajibController::class, 'index'])->name('peminjaman.wajib.index');
         Route::post('/kurikulum/peminjaman', [PeminjamanWajibController::class, 'store'])->name('peminjaman.wajib.store');
     });
+
+    Route::middleware([RoleMiddleware::class . ':kep_perpus,admin,kepsek'])->group(function () {
+        Route::get('/template/siswa', [UserController::class, 'downloadTemplateSiswa'])->name('template.siswa');
+        Route::post('/users/import-siswa', [UserController::class, 'importSiswa'])->name('users.import.siswa');
+        Route::get('/template/guru', [UserController::class, 'downloadTemplateGuru'])->name('template.guru');
+        Route::post('/users/import-guru', [UserController::class, 'importGuru'])->name('users.import.guru');
+    });
 });
 
