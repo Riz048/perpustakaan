@@ -134,7 +134,7 @@ Route::middleware(['auth'])->group(function () {
         ->middleware('auth', RoleMiddleware::class.':admin,kepsek,kep_perpus')
         ->name('dashboard.export.pdf');
 
-    // Paket Buku (Kurikulum) — khusus kepperpus, admin, kepsek
+    // Khusus kepperpus, admin, kepsek
     Route::middleware([RoleMiddleware::class . ':kep_perpus,admin,kepsek'])->group(function () {
         Route::get('/paket-buku', [PaketBukuController::class, 'index'])->name('paket.index');
         Route::get('/paket-buku/create', [PaketBukuController::class, 'create'])->name('paket.create');
@@ -142,11 +142,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/paket-buku/{id}/edit', [PaketBukuController::class, 'edit'])->name('paket.edit');
         Route::put('/paket-buku/{id}', [PaketBukuController::class, 'update'])->name('paket.update');
         Route::patch('/paket-buku/{id}/toggle', [PaketBukuController::class, 'toggleStatus'])->name('paket.toggle');
+
         Route::get('/kurikulum/peminjaman', [PeminjamanWajibController::class, 'index'])->name('peminjaman.wajib.index');
         Route::post('/kurikulum/peminjaman', [PeminjamanWajibController::class, 'store'])->name('peminjaman.wajib.store');
-    });
 
-    Route::middleware([RoleMiddleware::class . ':kep_perpus,admin,kepsek'])->group(function () {
         Route::get('/template/siswa', [UserController::class, 'downloadTemplateSiswa'])->name('template.siswa');
         Route::post('/users/import-siswa', [UserController::class, 'importSiswa'])->name('users.import.siswa');
         Route::get('/template/guru', [UserController::class, 'downloadTemplateGuru'])->name('template.guru');
@@ -156,5 +155,8 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/buku-akademik/import',[BukuController::class, 'importBukuAkademik'])->name('buku.import.akademik');
         Route::get('/buku-non-akademik/template',[BukuController::class, 'downloadTemplateBukuNonAkademik'])->name('template.nonakademik');
         Route::post('/buku-non-akademik/import',[BukuController::class, 'importBukuNonAkademik'])->name('buku.import.nonakademik');
+
+        Route::get('/kunjungan', [KunjunganController::class, 'index'])->name('kunjungan.index');
+        Route::get('/kunjungan/tamu', [KunjunganController::class, 'tamu'])->name('kunjungan.tamu');
     });
 });

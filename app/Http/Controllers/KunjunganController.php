@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\KunjunganPerpustakaan;
 use App\Models\User;
+use Carbon\Carbon;
 
 class KunjunganController extends Controller
 {
@@ -19,7 +20,12 @@ class KunjunganController extends Controller
         $petugas = $users->whereIn('role', ['admin','kep_perpus','kepsek'])
                      ->keyBy('role');
 
-        return view('admin.kunjungan', compact('users', 'petugas'));
+        $statKunjungan = KunjunganPerpustakaan::select('role', DB::raw('COUNT(*) as total'))
+            ->whereIn('role', ['siswa','guru','tamu'])
+            ->groupBy('role')
+            ->pluck('total','role');
+
+        return view('admin.kunjungan', compact('users', 'petugas', 'statKunjungan'));
     }
 
     public function store(Request $request)
@@ -27,18 +33,35 @@ class KunjunganController extends Controller
         $request->validate([
             'role' => 'required',
             'tujuan' => 'required',
-            'nama_pengunjung' => 'required_if:user_id,null'
+            'nama_pengunjung' => 'nullable|string',
+            'id_user' => 'nullable|integer',
+            'id_user_admin' => 'nullable|integer',
         ]);
 
+        $idUser = $request->id_user ?? $request->id_user_admin;
+
+        if ($request->nama_pengunjung) {
+            $nama = $request->nama_pengunjung;
+        } elseif ($idUser) {
+            $user = User::where('id_user', $idUser)->first();
+            $nama = $user?->nama;
+        }
+
+        if (empty($nama)) {
+            return back()
+                ->withErrors('Nama pengunjung gagal ditentukan')
+                ->withInput();
+        }
+
         KunjunganPerpustakaan::create([
-            'user_id' => $request->user_id,
-            'nama_pengunjung' => $request->nama_pengunjung,
+            'user_id' => $idUser,
+            'nama_pengunjung' => $nama,
             'role' => $request->role,
             'tujuan' => $request->tujuan,
             'tanggal_kunjungan' => now()->toDateString(),
         ]);
 
-        return back()->with('success','Kunjungan berhasil dicatat');
+        return back()->with('success', 'Kunjungan berhasil dicatat');
     }
 
     public function grafik()
@@ -53,5 +76,15 @@ class KunjunganController extends Controller
             ->get();
 
         return view('dashboard.grafik_kunjungan', compact('data'));
+    }
+
+    public function tamu()
+    {
+        $data = KunjunganPerpustakaan::whereYear('tanggal_kunjungan', now()->year)
+            ->orderBy('tanggal_kunjungan', 'asc')
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        return view('admin.kunjungan_tamu', compact('data'));
     }
 }

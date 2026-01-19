@@ -21,8 +21,8 @@
     {{-- KUNJUNGAN --}}
     <div class="sidebar-heading">Kunjungan</div>
 
-    <li class="nav-item {{ request()->routeIs('kunjungan') ? 'active' : '' }}">
-        <a class="nav-link sidebar-link" href="{{ route('kunjungan') }}">
+    <li class="nav-item {{ request()->routeIs('kunjungan.*') ? 'active' : '' }}">
+        <a class="nav-link sidebar-link" href="{{ route('kunjungan.index') }}">
             <i class="fas fa-file"></i>
             <span>Kunjungan</span>
         </a>

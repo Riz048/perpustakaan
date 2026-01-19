@@ -11,8 +11,10 @@ class KunjunganPerpustakaan extends Model
 
     protected $fillable = [
         'user_id',
+        'nama_pengunjung',
         'role',
         'tujuan',
+        'keterangan',
         'tanggal_kunjungan',
         'created_at'
     ];
