@@ -18,6 +18,18 @@
 
     <hr class="sidebar-divider">
 
+    {{-- KUNJUNGAN --}}
+    <div class="sidebar-heading">Kunjungan</div>
+
+    <li class="nav-item {{ request()->routeIs('kunjungan') ? 'active' : '' }}">
+        <a class="nav-link sidebar-link" href="{{ route('kunjungan') }}">
+            <i class="fas fa-file"></i>
+            <span>Kunjungan</span>
+        </a>
+    </li>
+
+    <hr class="sidebar-divider">
+
     {{-- DATA BUKU --}}
     <div class="sidebar-heading">Data Buku</div>
 
@@ -34,57 +46,6 @@
             <span>Buku Non-Akademik</span>
         </a>
     </li>
-
-    {{-- KURIKULUM — khusus admin, kepperpus, kepsek --}}
-    @if(in_array(Auth::user()->role, ['kep_perpus','admin','kepsek']))
-        <hr class="sidebar-divider">
-        <div class="sidebar-heading">Kurikulum</div>
-
-        <li class="nav-item {{ request()->routeIs('paket.index') ? 'active' : '' }}">
-            <a class="nav-link sidebar-link" href="{{ route('paket.index') }}">
-                <i class="fas fa-layer-group"></i>
-                <span>Paket Buku</span>
-            </a>
-        </li>
-
-        <li class="nav-item {{ request()->routeIs('peminjaman.wajib.*') ? 'active' : '' }}">
-            <a class="nav-link sidebar-link" href="{{ route('peminjaman.wajib.index') }}">
-                <i class="fas fa-book-reader"></i>
-                <span>Peminjaman Buku Wajib</span>
-            </a>
-        </li>
-    @endif
-
-    {{-- DATA USER — khusus admin, kepperpus, kepsek --}}
-        <hr class="sidebar-divider">
-
-        <div class="sidebar-heading">Data Users</div>
-
-        {{-- Siswa --}}
-        <li class="nav-item {{ request()->routeIs('users.siswa') ? 'active' : '' }}">
-            <a class="nav-link sidebar-link" href="{{ route('users.siswa') }}">
-                <i class="fas fa-user-graduate"></i>
-                <span>Siswa</span>
-            </a>
-        </li>
-        
-    @if(in_array(Auth::user()->role, ['admin','kep_perpus','kepsek']))
-        {{-- Guru --}}
-        <li class="nav-item {{ request()->routeIs('users.guru') ? 'active' : '' }}">
-            <a class="nav-link sidebar-link" href="{{ route('users.guru') }}">
-                <i class="fas fa-chalkboard-teacher"></i>
-                <span>Guru</span>
-            </a>
-        </li>
-
-        {{-- Petugas --}}
-        <li class="nav-item {{ request()->routeIs('petugas') ? 'active' : '' }}">
-            <a class="nav-link sidebar-link" href="{{ route('petugas') }}">
-                <i class="fas fa-chalkboard-teacher"></i>
-                <span>Petugas</span>
-            </a>
-        </li>
-    @endif
 
     <hr class="sidebar-divider">
 
@@ -104,6 +65,57 @@
             <span>Pengembalian</span>
         </a>
     </li>
+
+    <hr class="sidebar-divider">
+
+    {{-- DATA USER — khusus admin, kepperpus, kepsek --}}
+        <div class="sidebar-heading">Data Users</div>
+
+        {{-- Siswa --}}
+        <li class="nav-item {{ request()->routeIs('users.siswa') ? 'active' : '' }}">
+            <a class="nav-link sidebar-link" href="{{ route('users.siswa') }}">
+                <i class="fas fa-user-graduate"></i>
+                <span>Siswa</span>
+            </a>
+        </li>
+        
+        @if(in_array(Auth::user()->role, ['admin','kep_perpus','kepsek']))
+            {{-- Guru --}}
+            <li class="nav-item {{ request()->routeIs('users.guru') ? 'active' : '' }}">
+                <a class="nav-link sidebar-link" href="{{ route('users.guru') }}">
+                    <i class="fas fa-chalkboard-teacher"></i>
+                    <span>Guru</span>
+                </a>
+            </li>
+
+            {{-- Petugas --}}
+            <li class="nav-item {{ request()->routeIs('petugas') ? 'active' : '' }}">
+                <a class="nav-link sidebar-link" href="{{ route('petugas') }}">
+                    <i class="fas fa-chalkboard-teacher"></i>
+                    <span>Petugas</span>
+                </a>
+            </li>
+        @endif
+
+    <hr class="sidebar-divider">
+    {{-- KURIKULUM — khusus admin, kepperpus, kepsek --}}
+    @if(in_array(Auth::user()->role, ['kep_perpus','admin','kepsek']))
+        <div class="sidebar-heading">Kurikulum</div>
+
+        <li class="nav-item {{ request()->routeIs('paket.index') ? 'active' : '' }}">
+            <a class="nav-link sidebar-link" href="{{ route('paket.index') }}">
+                <i class="fas fa-layer-group"></i>
+                <span>Paket Buku</span>
+            </a>
+        </li>
+
+        <li class="nav-item {{ request()->routeIs('peminjaman.wajib.*') ? 'active' : '' }}">
+            <a class="nav-link sidebar-link" href="{{ route('peminjaman.wajib.index') }}">
+                <i class="fas fa-book-reader"></i>
+                <span>Peminjaman Buku Wajib</span>
+            </a>
+        </li>
+    @endif
 
     <hr class="sidebar-divider">
 

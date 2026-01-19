@@ -12,6 +12,7 @@ use App\Http\Controllers\PeminjamanWajibController;
 use App\Http\Controllers\PetugasController;
 use App\Http\Controllers\ReferensiController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\KunjunganController;
 use App\Http\Controllers\PengaturanController;
 use App\Http\Middleware\RoleMiddleware;
 
@@ -89,6 +90,11 @@ Route::middleware(['auth'])->group(function () {
                 'destroy' => 'users.destroy',
             ]);
 
+        // Kunjungan
+        Route::get('/kunjungan', [KunjunganController::class, 'index'])->name('kunjungan');
+        Route::post('/kunjungan', [KunjunganController::class, 'store'])->name('kunjungan.store');
+        Route::get('/dashboard/grafik-kunjungan', [KunjunganController::class, 'grafik'])->name('kunjungan.grafik');
+
         // Peminjaman
         Route::resource('peminjaman', PeminjamanController::class)->except(['create', 'edit', 'show'])->names([
             'index'   => 'peminjaman',
@@ -104,11 +110,9 @@ Route::middleware(['auth'])->group(function () {
             'destroy' => 'pengembalian.destroy',
         ]);
 
-        Route::put('/pengembalian/{id}', [PengembalianController::class, 'update'])
-            ->name('pengembalian.update');
+        Route::put('/pengembalian/{id}', [PengembalianController::class, 'update'])->name('pengembalian.update');
 
-        Route::get('pengembalian/paket/{id}', [PengembalianController::class, 'getDetailPaket'])
-            ->name('pengembalian.paket.detail');
+        Route::get('pengembalian/paket/{id}', [PengembalianController::class, 'getDetailPaket'])->name('pengembalian.paket.detail');
         Route::get('/pengembalian/paket/edit/{id}', [PengembalianController::class, 'getEditPaket']);
         Route::put('/pengembalian/paket/{id}', [PengembalianController::class, 'updatePaket']);
     });
