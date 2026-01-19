@@ -8,6 +8,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use App\Imports\BukuAkademikImport;
+use App\Exports\BukuAkademikTemplateExport;
+use App\Imports\BukuNonAkademikImport;
+use App\Exports\BukuNonAkademikTemplateExport;
+use Maatwebsite\Excel\Facades\Excel;
 
 class BukuController extends Controller
 {
@@ -51,7 +56,7 @@ class BukuController extends Controller
 
         } else {
             // Guest: hanya boleh lihat buku bacaan
-            $buku = Buku::whereNull('kelas_akademik')->get();
+            $buku = Buku::where('kelas_akademik', 'non-akademik')->get();
         }
 
         return view('user.beranda', compact('buku'));
@@ -258,5 +263,53 @@ class BukuController extends Controller
         $buku->delete();
 
         return back()->with('success', 'Buku berhasil dihapus');
+    }
+
+    public function downloadTemplateBukuAkademik()
+    {
+        return Excel::download(
+            new BukuAkademikTemplateExport,
+            'template_import_buku_akademik.xlsx'
+        );
+    }
+
+    public function importBukuAkademik(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx|max:2048'
+        ]);
+
+        $import = new BukuAkademikImport();
+        Excel::import($import, $request->file('file'));
+
+        if (!empty($import->errors)) {
+            return back()->with('error_import', $import->errors);
+        }
+
+        return back()->with('success', 'Data buku akademik berhasil diimport');
+    }
+
+    public function downloadTemplateBukuNonAkademik()
+    {
+        return Excel::download(
+            new BukuNonAkademikTemplateExport,
+            'template_import_buku_non_akademik.xlsx'
+        );
+    }
+
+    public function importBukuNonAkademik(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx|max:2048'
+        ]);
+
+        $import = new BukuNonAkademikImport();
+        Excel::import($import, $request->file('file'));
+
+        if (!empty($import->errors)) {
+            return back()->with('error_import', $import->errors);
+        }
+
+        return back()->with('success', 'Data buku non-akademik berhasil diimport');
     }
 }

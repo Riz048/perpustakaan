@@ -151,6 +151,10 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/users/import-siswa', [UserController::class, 'importSiswa'])->name('users.import.siswa');
         Route::get('/template/guru', [UserController::class, 'downloadTemplateGuru'])->name('template.guru');
         Route::post('/users/import-guru', [UserController::class, 'importGuru'])->name('users.import.guru');
+
+        Route::get('/buku-akademik/template',[BukuController::class, 'downloadTemplateBukuAkademik'])->name('template.akademik');
+        Route::post('/buku-akademik/import',[BukuController::class, 'importBukuAkademik'])->name('buku.import.akademik');
+        Route::get('/buku-non-akademik/template',[BukuController::class, 'downloadTemplateBukuNonAkademik'])->name('template.nonakademik');
+        Route::post('/buku-non-akademik/import',[BukuController::class, 'importBukuNonAkademik'])->name('buku.import.nonakademik');
     });
 });
-

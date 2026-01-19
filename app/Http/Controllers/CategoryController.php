@@ -33,7 +33,7 @@ class CategoryController extends Controller
 
                 $query->where(function ($q) use ($kelas) {
                     $q->where('kelas_akademik', $kelas)
-                      ->orWhereNull('kelas_akademik'); // buku bacaan
+                      ->orWhere('kelas_akademik', 'non-akademik');
                 });
             }
 

@@ -67,7 +67,8 @@ class GuruImport implements ToCollection, WithHeadingRow
 
         try {
             foreach ($this->validatedRows as $data) {
-                User::create([
+
+                $user = User::create([
                     'nama'     => $data['nama'],
                     'username' => $data['username'],
                     'password' => Hash::make($data['password']),
@@ -75,6 +76,19 @@ class GuruImport implements ToCollection, WithHeadingRow
                     'kelamin'  => $data['kelamin'],
                     'telpon'   => $data['telpon'],
                     'alamat'   => $data['alamat'],
+                ]);
+
+                // log user
+                DB::table('log_user')->insert([
+                    'id_user'    => $user->id_user,
+                    'role'       => $user->role,
+                    'nama'       => $user->nama,
+                    'username'   => $user->username,
+                    'password'   => '-',
+                    'kelamin'    => $user->kelamin,
+                    'action'     => 'inserted',
+                    'changed_on' => now(),
+                    'changed_by' => auth()->id(),
                 ]);
             }
 
