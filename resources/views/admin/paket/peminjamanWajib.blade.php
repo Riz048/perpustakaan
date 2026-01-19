@@ -27,10 +27,10 @@
     <h1 class="h3 mb-4">Peminjaman Buku Wajib</h1>
 
     {{-- FILTER --}}
-    <form method="GET" class="row mb-3">
+    <form method="GET" class="row mb-3 align-items-end">
 
         <div class="col-md-3">
-            <select name="target" class="form-control" required>
+            <select name="target" id="target" class="form-control" required>
                 <option value="">Pilih Target</option>
                 <option value="siswa" {{ request('target')=='siswa'?'selected':'' }}>Siswa</option>
                 <option value="guru" {{ request('target')=='guru'?'selected':'' }}>Guru</option>
@@ -38,7 +38,7 @@
         </div>
 
         <div class="col-md-3">
-            <select name="kelas" class="form-control" required>
+            <select name="kelas" id="kelas" class="form-control" required>
                 <option value="">Pilih Kelas</option>
                 @foreach(['10','11','12'] as $k)
                     <option value="{{ $k }}" {{ request('kelas')==$k?'selected':'' }}>
@@ -48,16 +48,26 @@
             </select>
         </div>
 
-        <div class="col-md-3">
-            <input type="text" name="tahun" class="form-control"
-                   placeholder="2025/2026" value="{{ request('tahun') }}" required>
+        <div class="col-md-3" id="rombelWrap" style="display:none">
+            <select name="rombel" id="rombelSelect" class="form-control">
+                <option value="">Pilih Rombel</option>
+            </select>
         </div>
 
         <div class="col-md-3">
-            <button class="btn btn-primary">Tampilkan</button>
+            <input type="text" name="tahun" class="form-control"
+                placeholder="2025/2026" value="{{ request('tahun') }}" required>
         </div>
-        
+
+        <div class="col-md-12 mt-2 text-right">
+            <button class="btn btn-primary mr-2">Tampilkan</button>
+            <a href="{{ route('peminjaman.wajib.index') }}" class="btn btn-secondary">
+                Reset
+            </a>
+        </div>
+
     </form>
+
 
     {{-- JIKA FILTER DIISI TAPI PAKET TIDAK ADA --}}
     @if(request()->filled('kelas') && request()->filled('tahun') && !$paket)
@@ -90,16 +100,6 @@
         <div class="alert alert-info">
             Paket aktif: <strong>{{ $paket->nama_paket }}</strong>
         </div>
-
-        @if(request('target') === 'siswa')
-        <div class="col-md-3">
-            <input type="text" name="rombel"
-                class="form-control"
-                placeholder="Rombel"
-                value="{{ request('rombel') }}"
-                required>
-        </div>
-        @endif
 
         @if($siswa->isEmpty())
             <div class="alert alert-warning">
@@ -175,6 +175,53 @@
     @endif
 </div>
 @endsection
+
+<script>
+const rombelMap = {
+    10: [1,2,3,4,5,6,7,8,9],
+    11: [1,2,3,4,5,6,7,8,9],
+    12: [1,2,3,4,5,6,7,8,9],
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    const target = document.getElementById('target');
+    const kelas  = document.getElementById('kelas');
+    const rombel = document.getElementById('rombelSelect');
+    const wrap   = document.getElementById('rombelWrap');
+
+    function buildRombel(selected = null) {
+        rombel.innerHTML = '<option value="">Pilih Rombel</option>';
+        if (!kelas.value) return;
+
+        rombelMap[kelas.value].forEach(r => {
+            const opt = document.createElement('option');
+            opt.value = r;
+            opt.textContent = `${kelas.value}-${r}`;
+            if (String(r) === String(selected)) opt.selected = true;
+            rombel.appendChild(opt);
+        });
+    }
+
+    function syncUI() {
+        if (target.value === 'siswa') {
+            wrap.style.display = '';
+            buildRombel("{{ request('rombel') }}");
+            rombel.required = true;
+        } else {
+            wrap.style.display = 'none';
+            rombel.required = false;
+            rombel.innerHTML = '<option value="">Pilih Rombel</option>';
+        }
+    }
+
+    target.addEventListener('change', syncUI);
+    kelas.addEventListener('change', () => {
+        if (target.value === 'siswa') buildRombel();
+    });
+
+    syncUI();
+});
+</script>
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
