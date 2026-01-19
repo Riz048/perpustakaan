@@ -38,9 +38,11 @@
         <h1 class="h3 mb-0 font-weight-bold text-gray-800">Tabel Guru</h1>
 
         <div>
+            @if(in_array(auth()->user()->role, ['kep_perpus', 'kepsek', 'admin']))
             <button class="btn btn-success shadow-sm" data-toggle="modal" data-target="#modalImportGuru">
                 <i class="fas fa-file-import mr-1"></i> Import Guru (Excel)
             </button>
+            @endif
 
             @if(Auth::user()->role != 'kepsek')
             <button class="btn btn-primary shadow-sm" data-toggle="modal" data-target="#modalTambahUser">

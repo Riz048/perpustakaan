@@ -38,11 +38,13 @@
         </h1>
 
         <div>
+            @if(in_array(auth()->user()->role, ['kep_perpus', 'kepsek', 'admin']))
             <button class="btn btn-success shadow-sm mr-2" data-toggle="modal"
                 data-target="#modalImportBukuNonAkademik">
                 <i class="fas fa-file-import mr-1"></i>
                 Import Buku (Excel)
             </button>
+            @endif
 
             @if(Auth::user()->role != 'kepsek')
             <button class="btn btn-primary shadow-sm" data-toggle="modal" data-target="#modalTambahNon">
