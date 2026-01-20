@@ -5,7 +5,7 @@ RUN apt-get update && apt-get install -y \
     libzip-dev \
     unzip \
     git \
-    && docker-php-ext-install pdo pdo_mysql gd zip
+    && docker-php-ext-install pdo_mysql gd zip
 
 RUN a2enmod rewrite
 
