@@ -104,7 +104,15 @@ class SiswaImport implements ToCollection, WithHeadingRow
                     'alamat'   => $data['alamat'],
                 ]);
 
-                // riwayat kelas
+                // riwayat_role_user
+                DB::table('riwayat_role_user')->insert([
+                    'user_id'        => $user->id_user,
+                    'role'           => 'siswa',
+                    'tanggal_mulai'  => now()->toDateString(),
+                    'tanggal_selesai'=> null,
+                ]);
+
+                // riwayat_kelas_siswa
                 DB::table('riwayat_kelas_siswa')->insert([
                     'user_id'       => $user->id_user,
                     'tingkat'       => $data['tingkat'],

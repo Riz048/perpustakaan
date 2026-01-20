@@ -103,10 +103,20 @@ class BukuAkademikImport implements ToCollection, WithHeadingRow
     private function buatEksemplar($bukuId, $status, $jumlah)
     {
         for ($i = 0; $i < $jumlah; $i++) {
-            BukuEksemplar::create([
-                'buku_id' => $bukuId,
+
+            // eksemplar
+            $eksemplar = BukuEksemplar::create([
+                'buku_id'        => $bukuId,
                 'kode_eksemplar' => uniqid('EK-'),
-                'status' => $status
+            ]);
+
+            // riwayat_status_buku
+            DB::table('riwayat_status_buku')->insert([
+                'id_eksemplar'   => $eksemplar->id_eksemplar,
+                'status'         => $status,
+                'tanggal_mulai'  => now()->toDateString(),
+                'tanggal_selesai'=> null,
+                'keterangan'     => 'import excel',
             ]);
         }
     }

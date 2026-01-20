@@ -78,7 +78,15 @@ class GuruImport implements ToCollection, WithHeadingRow
                     'alamat'   => $data['alamat'],
                 ]);
 
-                // log user
+                // riwayat_role_user
+                DB::table('riwayat_role_user')->insert([
+                    'user_id'        => $user->id_user,
+                    'role'           => 'guru',
+                    'tanggal_mulai'  => now()->toDateString(),
+                    'tanggal_selesai'=> null,
+                ]);
+
+                // log_user
                 DB::table('log_user')->insert([
                     'id_user'    => $user->id_user,
                     'role'       => $user->role,

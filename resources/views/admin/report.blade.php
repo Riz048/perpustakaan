@@ -33,10 +33,6 @@
         background: #f4f4f4
     }
 
-    .section {
-        margin-bottom: 16px
-    }
-
     .chart {
         display: flex;
         justify-content: center;
@@ -50,7 +46,8 @@
     .empty {
         text-align: center;
         font-style: italic;
-        color: #888
+        color: #888;
+        margin: 6px 0;
     }
 
     .no-col {
@@ -94,7 +91,7 @@
         </table>
     @endif
 
-    {{-- KONDISI BUKU --}}
+    {{-- BUKU --}}
     @if($sections->contains('buku'))
         <h2>Kondisi Buku</h2>
         <table>
@@ -116,7 +113,6 @@
             </tr>
         </table>
 
-        {{-- SEBARAN BUKU --}}
         <h2>Buku per Kategori</h2>
         <table>
             <tr>
@@ -145,20 +141,20 @@
                 <td>{{ $eksFiksi }}</td>
             </tr>
             <tr>
-                <td>Buku Umum (Non-Fiksi)</td>
-                <td>{{ $judulUmum }}</td>
-                <td>{{ $eksUmum }}</td>
+                <td>Buku Non-Fiksi</td>
+                <td>{{ $judulNonFiksi }}</td>
+                <td>{{ $eksNonFiksi }}</td>
             </tr>
         </table>
     @endif
 
-    {{-- GRAFIK BUKU --}}
     @if($sections->contains('grafik'))
         <h3>Grafik Buku</h3>
         <div class="chart">
             <img src="{{ $chart2 }}">
         </div>
     @endif
+
 
     {{-- DAFTAR BUKU --}}
     @if($sections->contains('buku'))
@@ -178,7 +174,6 @@
                         <th>Pengarang</th>
                         <th>Jumlah</th>
                     </tr>
-
                     @foreach($list as $i => $b)
                         <tr>
                             <td class="no-col">{{ $i + 1 }}</td>
@@ -191,31 +186,68 @@
                 </table>
             @endif
         @endforeach
+    @endif
 
+    {{-- PENGUNJUNG --}}
+    @if($sections->contains('pengunjung') && !empty($kunjunganBulanan))
+        <h2>Pengunjung per Bulan</h2>
+
+        @if(empty($kunjunganBulanan) || count($kunjunganBulanan) === 0)
+            <div class="empty">Tidak ada data</div>
+        @else
+            <table>
+                <tr>
+                    <th>Bulan</th>
+                    <th>Jumlah</th>
+                </tr>
+                @foreach($kunjunganBulanan as $row)
+                    <tr>
+                        <td>{{ $row['label'] }}</td>
+                        <td>{{ $row['total'] }}</td>
+                    </tr>
+                @endforeach
+            </table>
+        @endif
+    @endif
+
+    @if($sections->contains('grafik'))
+        <h3>Grafik Pengunjung</h3>
+        <div class="chart">
+            <img src="{{ $chart4 }}">
+        </div>
     @endif
 
     {{-- PEMINJAMAN --}}
     @if($sections->contains('peminjaman'))
         <h2>Peminjaman per Bulan</h2>
-        <table>
-            <tr>
-                <th>Bulan</th>
-                <th>Jumlah</th>
-            </tr>
-            @php
-                $bulan=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-            @endphp
 
-            @foreach($peminjaman as $row)
+        @if(empty($peminjaman))
+            <div class="empty">Tidak ada data</div>
+        @else
+            <table>
+                <tr>
+                    <th>Bulan</th>
+                    <th>Jumlah</th>
+                </tr>
+                @foreach($peminjaman as $row)
                 <tr>
                     <td>{{ $row['label'] }}</td>
                     <td>{{ $row['total'] }}</td>
                 </tr>
-            @endforeach
-
-        </table>
+                @endforeach
+            </table>
+        @endif
     @endif
 
+    @if($sections->contains('grafik'))
+        <h3>Grafik Peminjaman</h3>
+        <div class="chart">
+            <img src="{{ $chart1 }}">
+        </div>
+    @endif
+
+
+    {{-- BUKU DIPINJAM --}}
     @if($sections->contains('buku_dipinjam'))
         <h2>Daftar Buku yang Dipinjam</h2>
 
@@ -245,125 +277,97 @@
         @endif
     @endif
 
-    {{-- DISTRIBUSI USER --}}
+    {{-- USER --}}
     @if($sections->contains('list_user'))
         <h2>Distribusi Pengguna</h2>
 
         @if($userDistribusi->isEmpty())
             <div class="empty">Tidak ada data</div>
         @else
-            @php
-                $urutanRole = [
-                'siswa' => 'Siswa',
-                'guru' => 'Guru',
-                'petugas' => 'Petugas',
-                'kep_perpus' => 'Kepala Perpustakaan',
-                'kepsek' => 'Kepala Sekolah',
-                ];
-            @endphp
-
-        <table>
-            <tr>
-                <th>Role</th>
-                <th>Jumlah User</th>
-            </tr>
-
-            @foreach($urutanRole as $key => $label)
-                @php
-                    $row = $userDistribusi->firstWhere('role', $key);
-                @endphp
+            <table>
                 <tr>
-                    <td>{{ $label }}</td>
-                    <td>{{ $row->total ?? 0 }}</td>
+                    <th>Role</th>
+                    <th>Jumlah User</th>
                 </tr>
-            @endforeach
-        </table>
+                @foreach($userDistribusi as $u)
+                    <tr>
+                        <td>{{ ucfirst($u->role) }}</td>
+                        <td>{{ $u->total }}</td>
+                    </tr>
+                @endforeach
+            </table>
+        @endif
 
+        @if($sections->contains('grafik'))
+            <h3>Grafik Komposisi User</h3>
+            <div class="chart">
+                <img src="{{ $chart3 }}">
+            </div>
         @endif
     @endif
 
-    {{-- GRAFIK USER --}}
-    @if($sections->contains('grafik'))
-        <h3>Grafik Komposisi User</h3>
-        <div class="chart">
-            <img src="{{ $chart3 }}">
-        </div>
-    @endif
-
+    {{-- DAFTAR USER --}}
     @if($sections->contains('list_user'))
+        <h2>Daftar Pengguna</h2>
 
-    {{-- DAFTAR PENGGUNA --}}
-    <h2>Daftar Pengguna</h2>
-
-    <h3>Siswa</h3>
-
-    @if($listSiswa->isEmpty())
-        <div class="empty">Tidak ada data</div>
-    @else
-        <table>
-            <tr>
-                <th class="no-col">No</th>
-                <th>Nama</th>
-                <th>Kelas</th>
-            </tr>
-            @foreach($listSiswa as $i => $u)
+        <h3>Siswa</h3>
+        @if($listSiswa->isEmpty())
+            <div class="empty">Tidak ada data</div>
+        @else
+            <table>
                 <tr>
-                    <td class="no-col">{{ $i + 1 }}</td>
-                    <td>{{ $u->nama }}</td>
-                    <td>
-                        @if($u->tingkat)
-                            {{ $u->tingkat }}-{{ $u->rombel }}
-                        @else
-                            -
-                        @endif
-                    </td>
+                    <th>No</th>
+                    <th>Nama</th>
+                    <th>Kelas</th>
                 </tr>
-            @endforeach
-        </table>
-    @endif
+                @foreach($listSiswa as $i => $u)
+                    <tr>
+                        <td>{{ $i + 1 }}</td>
+                        <td>{{ $u->nama }}</td>
+                        <td>{{ $u->tingkat ? $u->tingkat.'-'.$u->rombel : '-' }}</td>
+                    </tr>
+                @endforeach
+            </table>
+        @endif
 
-    <h3>Guru</h3>
-
-    @if($listGuru->isEmpty())
-        <div class="empty">Tidak ada data</div>
-    @else
-        <table>
-            <tr>
-                <th class="no-col">No</th>
-                <th>Nama</th>
-            </tr>
-            @foreach($listGuru as $i => $u)
+        <h3>Guru</h3>
+        @if($listGuru->isEmpty())
+            <div class="empty">Tidak ada data</div>
+        @else
+            <table>
                 <tr>
-                    <td class="no-col">{{ $i + 1 }}</td>
-                    <td>{{ $u->nama }}</td>
+                    <th>No</th>
+                    <th>Nama</th>
                 </tr>
-            @endforeach
-        </table>
-    @endif
+                @foreach($listGuru as $i => $u)
+                    <tr>
+                        <td>{{ $i + 1 }}</td>
+                        <td>{{ $u->nama }}</td>
+                    </tr>
+                @endforeach
+            </table>
+        @endif
 
-    <h3>Petugas</h3>
-
-    @if($listPetugas->isEmpty())
-        <div class="empty">Tidak ada data</div>
-    @else
-        <table>
-            <tr>
-                <th class="no-col">No</th>
-                <th>Nama</th>
-            </tr>
-            @foreach($listPetugas as $i => $u)
+        <h3>Petugas</h3>
+        @if($listPetugas->isEmpty())
+            <div class="empty">Tidak ada data</div>
+        @else
+            <table>
                 <tr>
-                    <td class="no-col">{{ $i + 1 }}</td>
-                    <td>{{ $u->nama }}</td>
+                    <th>No</th>
+                    <th>Nama</th>
                 </tr>
-            @endforeach
-        </table>
+                @foreach($listPetugas as $i => $u)
+                    <tr>
+                        <td>{{ $i + 1 }}</td>
+                        <td>{{ $u->nama }}</td>
+                    </tr>
+                @endforeach
+            </table>
+        @endif
     @endif
 
-    @endif
-
-    <!-- <br><br><br>
-
+    <br>
     <table style="width:100%; border:none;">
         <tr>
             <td style="width:60%; border:none;"></td>
@@ -373,7 +377,9 @@
                 <strong>{{ $kepalaPerpus->nama ?? '____________________' }}</strong>
             </td>
         </tr>
-    </table> -->
+    </table>
+   
+
 </body>
 
 </html>
