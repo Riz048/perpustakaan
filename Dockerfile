@@ -7,7 +7,9 @@ RUN apt-get update && apt-get install -y \
     git \
     && docker-php-ext-install pdo pdo_mysql gd zip
 
-RUN a2enmod rewrite
+RUN a2dismod mpm_event mpm_worker \
+ && a2enmod mpm_prefork \
+ && a2enmod rewrite
 
 WORKDIR /var/www/html
 COPY . .
@@ -23,5 +25,4 @@ RUN composer install --no-dev --optimize-autoloader --no-scripts
 RUN chown -R www-data:www-data storage bootstrap/cache
 
 EXPOSE 80
-
 CMD ["apache2-foreground"]
