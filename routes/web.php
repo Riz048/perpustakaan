@@ -115,6 +115,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('pengembalian/paket/{id}', [PengembalianController::class, 'getDetailPaket'])->name('pengembalian.paket.detail');
         Route::get('/pengembalian/paket/edit/{id}', [PengembalianController::class, 'getEditPaket']);
         Route::put('/pengembalian/paket/{id}', [PengembalianController::class, 'updatePaket']);
+
+        // Kunjungan
+        Route::get('/kunjungan', [KunjunganController::class, 'index'])->name('kunjungan.index');
+        Route::get('/kunjungan/tamu', [KunjunganController::class, 'tamu'])->name('kunjungan.tamu');
     });
 
     // Admin
@@ -155,8 +159,5 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/buku-akademik/import',[BukuController::class, 'importBukuAkademik'])->name('buku.import.akademik');
         Route::get('/buku-non-akademik/template',[BukuController::class, 'downloadTemplateBukuNonAkademik'])->name('template.nonakademik');
         Route::post('/buku-non-akademik/import',[BukuController::class, 'importBukuNonAkademik'])->name('buku.import.nonakademik');
-
-        Route::get('/kunjungan', [KunjunganController::class, 'index'])->name('kunjungan.index');
-        Route::get('/kunjungan/tamu', [KunjunganController::class, 'tamu'])->name('kunjungan.tamu');
     });
 });
