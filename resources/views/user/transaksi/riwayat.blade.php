@@ -47,53 +47,52 @@
             <div id="transaction-list" class="space-y-8">
                 @forelse($riwayat as $index => $pinjam)
                 @php
-                // Detail buku
-                $first = $pinjam->detail->first();
-                $judul = $first?->buku?->judul ?? 'Judul Buku Tidak Diketahui';
-                $gambar = $first?->buku?->gambar ?? null;
+                // Ambil detail yang benar-benar punya eksemplar & buku
+                if ($pinjam->keterangan === 'BUKU_WAJIB') {
+                    $judul  = $pinjam->paket->nama_paket ?? 'Paket Buku Wajib';
+                    $gambar = null; // paket biasanya ga punya cover tunggal
+                    $jumlahBuku = $pinjam->detail->count();
+                } else {
+                    $detailValid = $pinjam->detail->first(function ($d) {
+                        return $d->eksemplar && $d->eksemplar->buku;
+                    });
+
+                    $judul  = $detailValid?->eksemplar?->buku?->judul ?? 'Judul Buku Tidak Diketahui';
+                    $gambar = $detailValid?->eksemplar?->buku?->gambar ?? null;
+                    $jumlahBuku = null;
+                }
 
                 // Pengembalian
                 $pengembalian = $pinjam->pengembalian;
                 $hasReturn = $pengembalian !== null;
 
-                // Deadline 7 hari
+                // Deadline
                 $tanggalPinjam = \Carbon\Carbon::parse($pinjam->tanggal_pinjam)->startOfDay();
                 $deadline = $tanggalPinjam->copy()->addDays($pinjam->lama_pinjam);
                 $today = now()->startOfDay();
 
-                // Sudah dikembalikan
                 if ($hasReturn) {
-                $labelTanggal = 'Tanggal Pengembalian';
-                $tanggalKembaliText = \Carbon\Carbon::parse($pengembalian->tanggal_kembali)->format('d M Y');
-
-                $iconColor = 'text-green-600';
-                $dateColor = 'text-green-600';
-                $statusColor = 'bg-green-600';
-                $statusText = 'SUDAH DIKEMBALIKAN';
-                }
-
-                // Masih dipinjam
-                elseif ($today->lte($deadline)) {
-                $labelTanggal = 'Batas Pengembalian';
-                $tanggalKembaliText = $deadline->format('d M Y');
-
-                $iconColor = 'text-yellow-500';
-                $dateColor = 'text-yellow-600';
-                $statusColor = 'bg-yellow-500';
-                $statusText = 'DIPINJAM';
-                }
-
-                // Terlambat
-                else {
-                $daysLate = $deadline->diffInDays($today);
-
-                $labelTanggal = 'Terlambat ' . $daysLate . ' Hari';
-                $tanggalKembaliText = $deadline->format('d M Y');
-
-                $iconColor = 'text-red-600';
-                $dateColor = 'text-red-600';
-                $statusColor = 'bg-red-600';
-                $statusText = 'TERLAMBAT';
+                    $labelTanggal = 'Tanggal Pengembalian';
+                    $tanggalKembaliText = \Carbon\Carbon::parse($pengembalian->tanggal_kembali)->format('d M Y');
+                    $iconColor = 'text-green-600';
+                    $dateColor = 'text-green-600';
+                    $statusColor = 'bg-green-600';
+                    $statusText = 'SUDAH DIKEMBALIKAN';
+                } elseif ($today->lte($deadline)) {
+                    $labelTanggal = 'Batas Pengembalian';
+                    $tanggalKembaliText = $deadline->format('d M Y');
+                    $iconColor = 'text-yellow-500';
+                    $dateColor = 'text-yellow-600';
+                    $statusColor = 'bg-yellow-500';
+                    $statusText = 'DIPINJAM';
+                } else {
+                    $daysLate = $deadline->diffInDays($today);
+                    $labelTanggal = 'Terlambat ' . $daysLate . ' Hari';
+                    $tanggalKembaliText = $deadline->format('d M Y');
+                    $iconColor = 'text-red-600';
+                    $dateColor = 'text-red-600';
+                    $statusColor = 'bg-red-600';
+                    $statusText = 'TERLAMBAT';
                 }
                 @endphp
 
@@ -118,6 +117,12 @@
                         <p class="font-semibold text-lg text-primary-blue">
                             {{ $judul }}
                         </p>
+
+                        @if($pinjam->keterangan === 'BUKU_WAJIB')
+                            <p class="text-sm text-gray-500">
+                                {{ $jumlahBuku }} buku
+                            </p>
+                        @endif
                     </div>
 
                     <div
@@ -195,57 +200,56 @@
             <div id="transaction-list" class="space-y-6">
                 @forelse($riwayat as $index => $pinjam)
                 @php
-                // Detail buku
-                $first = $pinjam->detail->first();
-                $judul = $first?->buku?->judul ?? 'Judul Buku Tidak Diketahui';
-                $gambar = $first?->buku?->gambar ?? null;
+                // Ambil detail yang benar-benar punya eksemplar & buku
+                if ($pinjam->keterangan === 'BUKU_WAJIB') {
+                    $judul  = $pinjam->paket->nama_paket ?? 'Paket Buku Wajib';
+                    $gambar = null; // paket biasanya ga punya cover tunggal
+                    $jumlahBuku = $pinjam->detail->count();
+                } else {
+                    $detailValid = $pinjam->detail->first(function ($d) {
+                        return $d->eksemplar && $d->eksemplar->buku;
+                    });
+
+                    $judul  = $detailValid?->eksemplar?->buku?->judul ?? 'Judul Buku Tidak Diketahui';
+                    $gambar = $detailValid?->eksemplar?->buku?->gambar ?? null;
+                    $jumlahBuku = null;
+                }
 
                 // Pengembalian
                 $pengembalian = $pinjam->pengembalian;
                 $hasReturn = $pengembalian !== null;
 
-                // Deadline 7 hari
+                // Deadline
                 $tanggalPinjam = \Carbon\Carbon::parse($pinjam->tanggal_pinjam)->startOfDay();
                 $deadline = $tanggalPinjam->copy()->addDays($pinjam->lama_pinjam);
                 $today = now()->startOfDay();
 
-                // Sudah dikembalika
                 if ($hasReturn) {
-                $labelTanggal = 'Tanggal Pengembalian';
-                $tanggalKembaliText = \Carbon\Carbon::parse($pengembalian->tanggal_kembali)->format('d M Y');
-
-                $iconColor = 'text-green-600';
-                $dateColor = 'text-green-600';
-                $statusColor = 'bg-green-600';
-                $statusText = 'SUDAH DIKEMBALIKAN';
-                }
-
-                // Masih dipinjam
-                elseif ($today->lte($deadline)) {
-                $labelTanggal = 'Batas Pengembalian';
-                $tanggalKembaliText = $deadline->format('d M Y');
-
-                $iconColor = 'text-yellow-500';
-                $dateColor = 'text-yellow-600';
-                $statusColor = 'bg-yellow-500';
-                $statusText = 'DIPINJAM';
-                }
-
-                // Terlambat
-                else {
-                $daysLate = $deadline->diffInDays($today);
-
-                $labelTanggal = 'Terlambat ' . $daysLate . ' Hari';
-                $tanggalKembaliText = $deadline->format('d M Y');
-
-                $iconColor = 'text-red-600';
-                $dateColor = 'text-red-600';
-                $statusColor = 'bg-red-600';
-                $statusText = 'TERLAMBAT';
+                    $labelTanggal = 'Tanggal Pengembalian';
+                    $tanggalKembaliText = \Carbon\Carbon::parse($pengembalian->tanggal_kembali)->format('d M Y');
+                    $iconColor = 'text-green-600';
+                    $dateColor = 'text-green-600';
+                    $statusColor = 'bg-green-600';
+                    $statusText = 'SUDAH DIKEMBALIKAN';
+                } elseif ($today->lte($deadline)) {
+                    $labelTanggal = 'Batas Pengembalian';
+                    $tanggalKembaliText = $deadline->format('d M Y');
+                    $iconColor = 'text-yellow-500';
+                    $dateColor = 'text-yellow-600';
+                    $statusColor = 'bg-yellow-500';
+                    $statusText = 'DIPINJAM';
+                } else {
+                    $daysLate = $deadline->diffInDays($today);
+                    $labelTanggal = 'Terlambat ' . $daysLate . ' Hari';
+                    $tanggalKembaliText = $deadline->format('d M Y');
+                    $iconColor = 'text-red-600';
+                    $dateColor = 'text-red-600';
+                    $statusColor = 'bg-red-600';
+                    $statusText = 'TERLAMBAT';
                 }
                 @endphp
 
-                <div class="transaction-item bg-white p-4 rounded-xl shadow-md flex flex-col space-y-4">
+                <div class="transaction-item bg-white p-4 rounded-xl shadow-md flex flex-col space-y-4"
                     data-judul="{{ strtolower($judul) }}" data-status="{{ strtolower($statusText) }}">
 
                     {{-- NOMOR + GAMBAR + JUDUL --}}

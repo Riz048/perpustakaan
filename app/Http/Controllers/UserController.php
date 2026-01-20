@@ -239,7 +239,7 @@ class UserController extends Controller
     public function riwayat()
     {
         $riwayat = Peminjaman::where('id_user', Auth::id())
-            ->with('detail.buku')
+            ->with('detail.eksemplar.buku')
             ->orderByDesc('tanggal_pinjam')
             ->get();
 

@@ -24,6 +24,6 @@ class PeminjamanDetail extends Model
 
     public function eksemplar()
     {
-        return $this->belongsTo(BukuEksemplar::class, 'eksemplar_id', 'id_eksemplar');
+        return $this->belongsTo(BukuEksemplar::class, 'eksemplar_id');
     }
 }

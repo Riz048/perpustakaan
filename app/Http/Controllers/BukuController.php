@@ -25,7 +25,6 @@ class BukuController extends Controller
 
             // Siswa
             if ($role === 'siswa') {
-                $kelas = Auth::user()->kelas_akademik ?? null;
 
                 $buku = Buku::where('kelas_akademik', '!=', 'non-akademik')
                     ->whereHas('eksemplar', function ($q) {

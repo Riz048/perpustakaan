@@ -8,10 +8,10 @@
         </div>
     </div>
     <ul class="hidden md:flex space-x-8 text-primary-blue font-medium">
-        <li><a href="{{ route('beranda') }}#beranda" class="hover:text-blue-600">Beranda</a></li>
-        <li><a href="{{ route('beranda') }}#tentang" class="hover:text-blue-600">Tentang</a></li>
-        <li><a href="{{ route('beranda') }}#layanan" class="hover:text-blue-600">Layanan</a></li>
-        <li><a href="{{ route('beranda') }}#kontak" class="hover:text-blue-600">Kontak</a></li>
+        <li><a href="{{ url('/') }}#beranda" class="hover:text-blue-600">Beranda</a></li>
+        <li><a href="{{ url('/') }}#tentang" class="hover:text-blue-600">Tentang</a></li>
+        <li><a href="{{ url('/') }}#layanan" class="hover:text-blue-600">Layanan</a></li>
+        <li><a href="{{ url('/') }}#kontak" class="hover:text-blue-600">Kontak</a></li>
 
         {{-- MENU DASHBOARD KHUSUS STAFF --}}
         @auth
@@ -55,10 +55,10 @@
 
     <div id="mobileMenu" class="hidden md:hidden absolute top-full left-0 w-full bg-white shadow-md px-6 py-4">
         <ul class="space-y-4 text-primary-blue font-medium">
-            <li><a href="{{ route('beranda') }}#beranda"class="mobile-link">Beranda</a></li>
-            <li><a href="{{ route('beranda') }}#tentang"class="mobile-link">Tentang</a></li>
-            <li><a href="{{ route('beranda') }}#layanan"class="mobile-link">Layanan</a></li>
-            <li><a href="{{ route('beranda') }}#kontak"class="mobile-link">Kontak</a></li>
+            <li><a href="{{ url('/') }}#beranda"class="mobile-link">Beranda</a></li>
+            <li><a href="{{ url('/') }}#tentang"class="mobile-link">Tentang</a></li>
+            <li><a href="{{ url('/') }}#layanan"class="mobile-link">Layanan</a></li>
+            <li><a href="{{ url('/') }}#kontak"class="mobile-link">Kontak</a></li>
 
             @auth
                 @if(in_array(auth()->user()->role, ['petugas','kep_perpus','kepsek','admin']))
