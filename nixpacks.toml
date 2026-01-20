@@ -1,7 +1,0 @@
-[phases.setup]
-nixPkgs = [
-  "php83",
-  "php83Extensions.gd",
-  "php83Extensions.zip",
-  "php83Extensions.pdo_mysql"
-]
