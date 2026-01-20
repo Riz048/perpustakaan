@@ -34,6 +34,7 @@ class KunjunganController extends Controller
             'role' => 'required',
             'tujuan' => 'required',
             'nama_pengunjung' => 'nullable|string',
+            'keterangan' => 'nullable|string',
             'id_user' => 'nullable|integer',
             'id_user_admin' => 'nullable|integer',
         ]);
@@ -58,6 +59,7 @@ class KunjunganController extends Controller
             'nama_pengunjung' => $nama,
             'role' => $request->role,
             'tujuan' => $request->tujuan,
+            'keterangan' => $request->keterangan,
             'tanggal_kunjungan' => now()->toDateString(),
         ]);
 
@@ -78,11 +80,38 @@ class KunjunganController extends Controller
         return view('dashboard.grafik_kunjungan', compact('data'));
     }
 
-    public function tamu()
+    public function tamu(Request $request)
     {
-        $data = KunjunganPerpustakaan::whereYear('tanggal_kunjungan', now()->year)
-            ->orderBy('tanggal_kunjungan', 'asc')
-            ->orderBy('created_at', 'asc')
+        $query = KunjunganPerpustakaan::query();
+
+        // filter role
+        if ($request->filled('role')) {
+            $query->where('role', $request->role);
+        }
+
+        // search
+        if ($request->filled('nama')) {
+            $query->where('nama_pengunjung', 'like', '%'.$request->nama.'%');
+        }
+
+        // filter waktu
+        $periode = $request->periode ?? 'tahun';
+
+        if ($periode === 'minggu') {
+            $query->whereBetween('tanggal_kunjungan', [
+                now()->startOfWeek(),
+                now()->endOfWeek()
+            ]);
+        } elseif ($periode === 'bulan') {
+            $query->whereMonth('tanggal_kunjungan', now()->month)
+                ->whereYear('tanggal_kunjungan', now()->year);
+        } else {
+            $query->whereYear('tanggal_kunjungan', now()->year);
+        }
+
+        $data = $query
+            ->orderBy('tanggal_kunjungan', 'desc')
+            ->orderBy('created_at', 'desc')
             ->get();
 
         return view('admin.kunjungan_tamu', compact('data'));

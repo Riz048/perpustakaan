@@ -77,6 +77,14 @@ class UserController extends Controller
                     : null,
             ]);
 
+            // riwayat_role_user
+            DB::table('riwayat_role_user')->insert([
+                'user_id'        => $user->id_user,
+                'role'           => $user->role,
+                'tanggal_mulai'  => now()->toDateString(),
+                'tanggal_selesai'=> null
+            ]);
+
             // khusus siswa → buat kelas aktif pertama
             if ($user->role === 'siswa') {
                 $request->validate([

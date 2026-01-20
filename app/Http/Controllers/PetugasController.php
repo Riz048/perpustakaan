@@ -49,6 +49,14 @@ class PetugasController extends Controller
             'foto' => '',
         ]);
 
+        // riwayat_role_user
+        DB::table('riwayat_role_user')->insert([
+            'user_id'        => $user->id_user,
+            'role'           => $user->role,
+            'tanggal_mulai'  => now()->toDateString(),
+            'tanggal_selesai'=> null
+        ]);
+
         if ($user->role === 'petugas') {
             \DB::table('petugas')->updateOrInsert(
                 ['id_pegawai' => $user->id_user],
