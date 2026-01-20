@@ -16,9 +16,6 @@ class BukuNonAkademikImport implements ToCollection, WithHeadingRow
 
     public function collection(Collection $rows)
     {
-        // =========================
-        // 1. VALIDASI SEMUA BARIS
-        // =========================
         foreach ($rows as $i => $row) {
 
             $required = [
@@ -70,14 +67,10 @@ class BukuNonAkademikImport implements ToCollection, WithHeadingRow
             ];
         }
 
-        // ❌ ADA ERROR → BATAL SEMUA
         if (!empty($this->errors)) {
             return;
         }
 
-        // =========================
-        // 2. SIMPAN SEMUA DATA
-        // =========================
         DB::beginTransaction();
 
         try {
