@@ -159,7 +159,7 @@
                             @if(in_array(Auth::user()->role, ['kepsek', 'admin']))
                                 <option value="admin">Admin</option>
                                 <option value="kep_perpus">Kepala Perpustakaan</option>
-                                <!-- <option value="kepsek">Kepala Sekolah</option> -->
+                                <option value="kepsek">Kepala Sekolah</option>
                             @endif
                         </select>
                     </div>
