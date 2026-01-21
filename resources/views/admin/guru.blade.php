@@ -70,8 +70,7 @@
                     <tbody>
                         @foreach ($users as $user)
                         <tr>
-                            <td>{{ $user->id_user }}</td>
-                            </td>
+                            <td>{{ $loop->iteration }}</td>
                             <td>{{ $user->nama }}</td>
                             <td>{{ $user->username }}</td>
                             <td>{{ $user->telpon }}</td>

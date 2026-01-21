@@ -57,7 +57,7 @@
                 <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
                     <thead style="background: #f8f9fc;">
                         <tr>
-                            <th>ID</th>
+                            <th>No</th>
                             <th>Nama</th>
                             <th>Username</th>
                             <th>Kelas</th>
@@ -70,7 +70,7 @@
                     <tbody>
                         @foreach ($users as $user)
                         <tr>
-                            <td>{{ $user->id_user }}</td>
+                            <td>{{ $loop->iteration }}</td>
                             <td>{{ $user->nama }}</td>
                             <td>{{ $user->username }}</td>
                             <td>{{ optional($user->kelasAktif)->tingkat }}-{{ optional($user->kelasAktif)->rombel }}

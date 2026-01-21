@@ -7,6 +7,7 @@ use App\Models\Buku;
 use App\Models\BukuEksemplar;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use App\Imports\BukuAkademikImport;
 use App\Exports\BukuAkademikTemplateExport;
@@ -91,7 +92,7 @@ class BukuController extends Controller
         return view('user.referensi.detail.detail-buku', compact('buku'));
     }
 
-    // Admin Akademik
+    // Akademik
     public function indexAkademik()
     {
         $buku = Buku::whereIn('kelas_akademik', ['10','11','12'])
@@ -115,7 +116,7 @@ class BukuController extends Controller
                 },
             ])
             ->with([
-                'eksemplar.riwayatStatus' => fn ($q) =>
+                'eksemplar.statusAktif' => fn ($q) =>
                     $q->whereNull('tanggal_selesai')
             ])
             ->get()
@@ -125,7 +126,8 @@ class BukuController extends Controller
                 $buku->jumlah_hilang = 0;
 
                 foreach ($buku->eksemplar as $e) {
-                    $status = optional($e->riwayatStatus->first())->status;
+                    $status = optional($e->statusAktif)->status;
+
                     if ($status === 'baik')   $buku->jumlah_baik++;
                     if ($status === 'rusak')  $buku->jumlah_rusak++;
                     if ($status === 'hilang') $buku->jumlah_hilang++;
@@ -135,7 +137,7 @@ class BukuController extends Controller
         return view('admin.akademik', compact('buku'));
     }
 
-    // Admin Non-Akademik
+    // Non-Akademik
     public function indexNonAkademik()
     {
         $buku = Buku::where('kelas_akademik','non-akademik')
@@ -159,7 +161,7 @@ class BukuController extends Controller
                 },
             ])
             ->with([
-                'eksemplar.riwayatStatus' => fn ($q) =>
+                'eksemplar.statusAktif' => fn ($q) =>
                     $q->whereNull('tanggal_selesai')
             ])
             ->get()
@@ -169,7 +171,8 @@ class BukuController extends Controller
                 $buku->jumlah_hilang = 0;
 
                 foreach ($buku->eksemplar as $e) {
-                    $status = optional($e->riwayatStatus->first())->status;
+                    $status = optional($e->statusAktif)->status;
+
                     if ($status === 'baik')   $buku->jumlah_baik++;
                     if ($status === 'rusak')  $buku->jumlah_rusak++;
                     if ($status === 'hilang') $buku->jumlah_hilang++;
@@ -202,7 +205,24 @@ class BukuController extends Controller
             $data['gambar'] = $request->file('gambar')->store('cover_buku', 'public');
         }
 
-        $buku = Buku::create($data);
+        $request->validate([
+            'kode_buku' => 'required|unique:buku,kode_buku',
+        ], [
+            'kode_buku.unique' => 'Kode buku sudah digunakan.',
+        ]);
+
+        try {
+            $buku = Buku::create($data);
+        } catch (\Illuminate\Database\QueryException $e) {
+
+            if ($e->getCode() == 23000) {
+                return back()
+                    ->withErrors(['kode_buku' => 'Kode buku sudah ada di database.'])
+                    ->withInput();
+            }
+
+            throw $e;
+        }
 
         // Helper bikin eksemplar
         $this->buatEksemplar($buku->id, 'baik',   (int) $request->stok_baik);
@@ -220,10 +240,17 @@ class BukuController extends Controller
         for ($i = 1; $i <= $jumlah; $i++) {
 
             $eksemplar = BukuEksemplar::create([
-                'buku_id'        => $bukuId,
+                'buku_id' => $bukuId,
                 'kode_eksemplar' => uniqid('EK-'),
-                'status'         => $status,
             ]);
+
+            $service->ubahStatus(
+                $eksemplar->id_eksemplar,
+                $status,
+                'tambah buku',
+                auth()->id(),
+                'Tambah eksemplar baru'
+            );
 
             $service->ubahStatus(
                 $eksemplar->id_eksemplar,
@@ -241,29 +268,97 @@ class BukuController extends Controller
         $buku = Buku::findOrFail($id);
 
         $data = $request->only([
-            'tipe_bacaan',
-            'kode_buku',
-            'judul',
-            'nama_penerbit',
-            'isbn',
-            'pengarang',
-            'jlh_hal',
-            'tahun_terbit',
-            'sinopsis',
-            'keterangan',
+            'tipe_bacaan','kode_buku','judul','nama_penerbit',
+            'isbn','pengarang','jlh_hal','tahun_terbit',
+            'sinopsis','keterangan'
         ]);
 
-        if ($buku->kelas_akademik !== 'non-akademik' && $request->filled('kelas_akademik')) {
-            $data['kelas_akademik'] = $request->kelas_akademik;
-        }
-
         if ($request->hasFile('gambar')) {
-            $data['gambar'] = $request->file('gambar')->store('cover_buku', 'public');
+
+            // hapus gambar lama
+            if ($buku->gambar && Storage::disk('public')->exists($buku->gambar)) {
+                Storage::disk('public')->delete($buku->gambar);
+            }
+
+            $data['gambar'] = $request->file('gambar')
+                ->store('cover_buku', 'public');
         }
 
         $buku->update($data);
 
-        return back()->with('success', 'Data buku berhasil diperbarui');
+        try {
+            DB::transaction(function () use ($request, $buku) {
+
+                $current = [
+                    'baik'   => $buku->jumlah_baik,
+                    'rusak'  => $buku->jumlah_rusak,
+                    'hilang' => $buku->jumlah_hilang,
+                ];
+
+                $target = [
+                    'baik'   => (int) $request->stok_baik,
+                    'rusak'  => (int) $request->stok_rusak,
+                    'hilang' => (int) $request->stok_hilang,
+                ];
+
+                if (array_sum($current) !== array_sum($target)) {
+                    throw new \Exception(
+                        'Tidak bisa mengubah Total Buku / Buku Masuk'
+                    );
+                }
+
+                $service = app(\App\Services\EksemplarService::class);
+
+                foreach (['baik','rusak','hilang'] as $status) {
+
+                    $diff = $target[$status] - $current[$status];
+                    if ($diff <= 0) continue;
+
+                    foreach (['baik','rusak','hilang'] as $ambilDari) {
+                        if ($ambilDari === $status) continue;
+
+                        $kelebihan = $current[$ambilDari] - $target[$ambilDari];
+                        if ($kelebihan <= 0) continue;
+
+                        $ambil = min($diff, $kelebihan);
+
+                        $ids = BukuEksemplar::where('buku_id', $buku->id)
+                            ->whereHas('riwayatStatus', fn ($q) =>
+                                $q->whereNull('tanggal_selesai')
+                                ->where('status', $ambilDari)
+                            )
+                            ->limit($ambil)
+                            ->pluck('id_eksemplar');
+
+                        foreach ($ids as $id) {
+                            $service->ubahStatus(
+                                $id,
+                                $status,
+                                'edit buku',
+                                auth()->id(),
+                                'Perubahan manual via edit buku'
+                            );
+                        }
+
+                        $current[$ambilDari] -= $ambil;
+                        $diff -= $ambil;
+
+                        if ($diff <= 0) break;
+                    }
+
+                    if ($diff > 0) {
+                        throw new \Exception(
+                            'Jumlah eksemplar tidak mencukupi untuk perubahan status'
+                        );
+                    }
+                }
+            });
+
+        } catch (\Exception $e) {
+            return back()->withErrors($e->getMessage());
+        }
+
+        return back()->with('success', 'Data buku & gambar berhasil diperbarui');
     }
 
     // Hapus buku

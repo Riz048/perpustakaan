@@ -13,6 +13,7 @@ class BukuAkademikImport implements ToCollection, WithHeadingRow
 {
     public array $errors = [];
     private array $rowsValid = [];
+    private array $kodeBukuDalamFile = [];
 
     public function collection(Collection $rows)
     {
@@ -48,6 +49,21 @@ class BukuAkademikImport implements ToCollection, WithHeadingRow
                 !preg_match('/^\d{4}$/', $row->get('tahun_masuk'))
             ) {
                 $this->errors[] = "Baris ".($i+2).": Tahun harus format YYYY";
+                continue;
+            }
+
+            $kodeBuku = trim($row->get('kode_buku'));
+
+            // cek duplikat di file Excel
+            if (in_array($kodeBuku, $this->kodeBukuDalamFile)) {
+                $this->errors[] = "Baris ".($i+2).": kode_buku '{$kodeBuku}' duplikat di file Excel";
+                continue;
+            }
+            $this->kodeBukuDalamFile[] = $kodeBuku;
+
+            // cek sudah ada di database
+            if (Buku::where('kode_buku', $kodeBuku)->exists()) {
+                $this->errors[] = "Baris ".($i+2).": kode_buku '{$kodeBuku}' sudah ada di database";
                 continue;
             }
 
@@ -95,18 +111,16 @@ class BukuAkademikImport implements ToCollection, WithHeadingRow
     {
         for ($i = 1; $i <= $jumlah; $i++) {
 
-            $eksemplar = BukuEksemplar::create([
-                'buku_id'        => $bukuId,
+            $idEksemplar = DB::table('buku_eksemplar')->insertGetId([
+                'buku_id' => $bukuId,
                 'kode_eksemplar' => uniqid('EK-'),
-                'status'         => $status,
             ]);
 
             DB::table('riwayat_status_buku')->insert([
-                'id_eksemplar'    => $eksemplar->id_eksemplar,
-                'status'          => $status,
-                'tanggal_mulai'   => now(),
+                'id_eksemplar' => $idEksemplar,
+                'status' => $status,
+                'tanggal_mulai' => now()->toDateString(),
                 'tanggal_selesai' => null,
-                'keterangan'      => 'Import buku'
             ]);
         }
     }

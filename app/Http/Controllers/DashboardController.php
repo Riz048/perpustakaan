@@ -150,49 +150,60 @@ class DashboardController extends Controller
                 DB::table('riwayat_role_user as r'),
                 $refDate,
                 'r.tanggal_mulai',
-                'r.tanggal_selesai'
+                'r.tanggal_selesai',
+                'u'
             );
+
         $totalPegawai = snapshot(
-                DB::table('riwayat_role_user'),
+                DB::table('riwayat_role_user as r')
+                    ->join('user as u','u.id_user','=','r.user_id'),
                 $refDate,
-                'tanggal_mulai',
-                'tanggal_selesai'
+                'r.tanggal_mulai',
+                'r.tanggal_selesai',
+                'u'
             )
-            ->whereIn('role',['guru','petugas','kep_perpus','kepsek'])
-            ->distinct('user_id')
-            ->count('user_id');
+            ->whereIn('r.role',['guru','petugas','kep_perpus','kepsek'])
+            ->distinct('r.user_id')
+            ->count('r.user_id');
         $totalSiswa = snapshot(
-                DB::table('riwayat_role_user'),
+                DB::table('riwayat_role_user as r')
+                    ->join('user as u','u.id_user','=','r.user_id'),
                 $refDate,
-                'tanggal_mulai',
-                'tanggal_selesai'
+                'r.tanggal_mulai',
+                'r.tanggal_selesai',
+                'u'
             )
-            ->where('role','siswa')
-            ->distinct('user_id')
-            ->count('user_id');
+            ->where('r.role','siswa')
+            ->distinct('r.user_id')
+            ->count('r.user_id');
         $totalGuru = snapshot(
-                DB::table('riwayat_role_user'),
+                DB::table('riwayat_role_user as r')
+                    ->join('user as u','u.id_user','=','r.user_id'),
                 $refDate,
-                'tanggal_mulai',
-                'tanggal_selesai'
+                'r.tanggal_mulai',
+                'r.tanggal_selesai',
+                'u'
             )
-            ->where('role','guru')
-            ->distinct('user_id')
-            ->count('user_id');
+            ->where('r.role','guru')
+            ->distinct('r.user_id')
+            ->count('r.user_id');
         $totalPetugas = snapshot(
-                DB::table('riwayat_role_user'),
+                DB::table('riwayat_role_user as r')
+                    ->join('user as u','u.id_user','=','r.user_id'),
                 $refDate,
-                'tanggal_mulai',
-                'tanggal_selesai'
+                'r.tanggal_mulai',
+                'r.tanggal_selesai',
+                'u'
             )
-            ->whereIn('role',['petugas','kep_perpus'])
-            ->distinct('user_id')
-            ->count('user_id');
+            ->whereIn('r.role',['petugas','kep_perpus'])
+            ->distinct('r.user_id')
+            ->count('r.user_id');
         $kepalaPerpus = snapshot(
                 DB::table('riwayat_role_user as r'),
                 $refDate,
                 'r.tanggal_mulai',
-                'r.tanggal_selesai'
+                'r.tanggal_selesai',
+                'u'
             )
             ->where('r.role','kep_perpus')
             ->join('user as u','u.id_user','=','r.user_id')
@@ -583,13 +594,15 @@ class DashboardController extends Controller
 
         // USER
         $userDistribusi = snapshot(
-                DB::table('riwayat_role_user as r'),
+                DB::table('riwayat_role_user as r')
+                    ->join('user as u','u.id_user','=','r.user_id'),
                 $refDate,
                 'r.tanggal_mulai',
-                'r.tanggal_selesai'
+                'r.tanggal_selesai',
+                'u'
             )
-            ->select('role', DB::raw('COUNT(DISTINCT user_id) as total'))
-            ->groupBy('role')
+            ->select('r.role', DB::raw('COUNT(DISTINCT r.user_id) as total'))
+            ->groupBy('r.role')
             ->get();
 
         // CHART
@@ -602,7 +615,8 @@ class DashboardController extends Controller
                 DB::table('riwayat_role_user as r'),
                 $refDate,
                 'r.tanggal_mulai',
-                'r.tanggal_selesai'
+                'r.tanggal_selesai',
+                'u'
             )
             ->join('user as u','u.id_user','=','r.user_id')
             ->leftJoin('riwayat_kelas_siswa as k', function ($join) use ($refDate) {
@@ -623,7 +637,10 @@ class DashboardController extends Controller
                 DB::table('riwayat_role_user as r')
                     ->join('user as u','u.id_user','=','r.user_id')
                     ->where('r.role','guru'),
-                $refDate
+                $refDate,
+                'r.tanggal_mulai',
+                'r.tanggal_selesai',
+                'u'
             )
             ->select('u.id_user','u.nama')
             ->groupBy('u.id_user','u.nama')
@@ -633,7 +650,8 @@ class DashboardController extends Controller
                 DB::table('riwayat_role_user as r'),
                 $refDate,
                 'r.tanggal_mulai',
-                'r.tanggal_selesai'
+                'r.tanggal_selesai',
+                'u'
             )
             ->join('user as u','u.id_user','=','r.user_id')
             ->whereIn('r.role',['kep_perpus','petugas'])

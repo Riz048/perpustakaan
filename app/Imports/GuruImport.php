@@ -12,8 +12,8 @@ use Illuminate\Support\Collection;
 class GuruImport implements ToCollection, WithHeadingRow
 {
     public array $errors = [];
-
     private array $validatedRows = [];
+    private array $usernameDalamFile = [];
 
     public function collection(Collection $rows)
     {
@@ -46,6 +46,21 @@ class GuruImport implements ToCollection, WithHeadingRow
                 continue;
             }
 
+            $username = trim($row->get('username'));
+
+            // cek duplikat di file Excel
+            if (in_array($username, $this->usernameDalamFile)) {
+                $this->errors[] = "Baris ".($index + 2).": Username '{$username}' duplikat di file Excel";
+                continue;
+            }
+            $this->usernameDalamFile[] = $username;
+
+            // cek sudah ada di database
+            if (User::where('username', $username)->exists()) {
+                $this->errors[] = "Baris ".($index + 2).": Username '{$username}' sudah terdaftar";
+                continue;
+            }
+            
             // jika data cocok semua -> validasi
             $this->validatedRows[] = [
                 'nama'     => $row->get('nama'),

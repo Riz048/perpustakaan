@@ -13,6 +13,7 @@ class BukuNonAkademikImport implements ToCollection, WithHeadingRow
 {
     public array $errors = [];
     private array $validatedRows = [];
+    private array $kodeBukuDalamFile = [];
 
     public function collection(Collection $rows)
     {
@@ -50,6 +51,21 @@ class BukuNonAkademikImport implements ToCollection, WithHeadingRow
                 continue;
             }
 
+            $kodeBuku = trim($row->get('kode_buku'));
+
+            // cek duplikat di file Excel
+            if (in_array($kodeBuku, $this->kodeBukuDalamFile)) {
+                $this->errors[] = "Baris ".($i+2).": kode_buku '{$kodeBuku}' duplikat di file Excel";
+                continue;
+            }
+            $this->kodeBukuDalamFile[] = $kodeBuku;
+
+            // cek sudah ada di database
+            if (Buku::where('kode_buku', $kodeBuku)->exists()) {
+                $this->errors[] = "Baris ".($i+2).": kode_buku '{$kodeBuku}' sudah ada di database";
+                continue;
+            }
+
             $this->validatedRows[] = [
                 'tipe_bacaan'   => $tipe,
                 'kode_buku'     => $row->get('kode_buku'),
@@ -79,7 +95,7 @@ class BukuNonAkademikImport implements ToCollection, WithHeadingRow
                 $buku = Buku::create([
                     'kelas_akademik' => 'non-akademik',
                     'tipe_bacaan'    => $data['tipe_bacaan'],
-                    'kode_buku'      => $data['kode_buku'],
+                    'kode_buku'      => trim($data['kode_buku']),
                     'judul'          => $data['judul'],
                     'nama_penerbit'  => $data['nama_penerbit'],
                     'isbn'           => $data['isbn'],
@@ -107,18 +123,16 @@ class BukuNonAkademikImport implements ToCollection, WithHeadingRow
     {
         for ($i = 1; $i <= $jumlah; $i++) {
 
-            $eksemplar = BukuEksemplar::create([
-                'buku_id'        => $bukuId,
+            $idEksemplar = DB::table('buku_eksemplar')->insertGetId([
+                'buku_id' => $bukuId,
                 'kode_eksemplar' => uniqid('EK-'),
-                'status'         => $status,
             ]);
 
             DB::table('riwayat_status_buku')->insert([
-                'id_eksemplar'    => $eksemplar->id_eksemplar,
-                'status'          => $status,
-                'tanggal_mulai'   => now(),
+                'id_eksemplar' => $idEksemplar,
+                'status' => $status,
+                'tanggal_mulai' => now()->toDateString(),
                 'tanggal_selesai' => null,
-                'keterangan'      => 'Import buku'
             ]);
         }
     }

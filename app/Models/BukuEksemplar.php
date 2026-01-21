@@ -13,7 +13,6 @@ class BukuEksemplar extends Model
     protected $fillable = [
         'buku_id',
         'kode_eksemplar',
-        'status'
     ];
 
     public function buku()
@@ -33,5 +32,11 @@ class BukuEksemplar extends Model
             'id_eksemplar',
             'id_eksemplar'
         );
-    }    
+    }
+    
+    public function statusAktif()
+    {
+        return $this->hasOne(RiwayatStatusBuku::class, 'id_eksemplar')
+            ->whereNull('tanggal_selesai');
+    }
 }

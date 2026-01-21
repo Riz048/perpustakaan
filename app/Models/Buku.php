@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 use App\Models\BukuEksemplar;
 
 class Buku extends Model
@@ -82,5 +83,14 @@ class Buku extends Model
                     );
                 }
             ]);
+    }
+
+    public function eksemplarAktif(string $status)
+    {
+        return $this->eksemplar()
+            ->whereHas('riwayatStatus', function (Builder $q) use ($status) {
+                $q->whereNull('tanggal_selesai')
+                ->where('status', $status);
+            });
     }
 }
