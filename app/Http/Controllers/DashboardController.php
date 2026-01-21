@@ -19,11 +19,11 @@ class DashboardController extends Controller
         // Ringkasan umum
         $totalAkademik    = Buku::where('kelas_akademik','!=','non-akademik')->count();
         $totalNonAkademik = Buku::where('kelas_akademik','non-akademik')->count();
-        $totalSiswa       = User::where('role','siswa')->count();
-        $totalPegawai     = User::whereIn('role',['guru','petugas','kep_perpus','kepsek'])->count();
-        $totalGuru        = User::where('role','guru')->count();
-        $totalPetugas     = User::whereIn('role', ['petugas','kep_perpus'])->count();
-        $kepalaPerpus     = User::where('role','kep_perpus')->first();
+        $totalSiswa       = User::where('role','siswa')->where('status','aktif')->count();
+        $totalPegawai     = User::whereIn('role',['guru','petugas','kep_perpus','kepsek'])->where('status','aktif')->count();
+        $totalGuru        = User::where('role','guru')->where('status','aktif')->count();
+        $totalPetugas     = User::whereIn('role',['petugas','kep_perpus'])->where('status','aktif')->count();
+        $kepalaPerpus     = User::where('role','kep_perpus')->where('status','aktif')->first();
 
         $kunjunganBulanIni = KunjunganPerpustakaan::whereMonth('tanggal_kunjungan', now()->month)
             ->whereYear('tanggal_kunjungan', now()->year)
@@ -98,8 +98,10 @@ class DashboardController extends Controller
         $dataStok  = [$stokKelas10, $stokKelas11, $stokKelas12, $stokFiksi, $stokNonFiksi];
 
         // Distribusi user
-        $userDist = User::select('role', DB::raw('count(*) as total'))
-            ->groupBy('role')->get();
+        $userDist = User::where('status','aktif')
+            ->select('role', DB::raw('count(*) as total'))
+            ->groupBy('role')
+            ->get();
 
         $labelUser = $userDist->pluck('role')->map(fn ($r) => ucfirst($r))->toArray();
         $dataUser  = $userDist->pluck('total')->toArray();

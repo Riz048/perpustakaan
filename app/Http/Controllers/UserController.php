@@ -78,14 +78,8 @@ class UserController extends Controller
                     : null,
             ]);
 
-            if ($user->role === 'siswa') {
-                DB::table('siswa')->insert([
-                    'id_siswa'      => $user->id_user,
-                    'status'        => 'aktif',
-                    'tanggal_keluar'=> null,
-                    'keterangan'    => null,
-                ]);
-            }
+            $this->syncRoleTables($user);
+
             // riwayat_role_user
             DB::table('riwayat_role_user')->insert([
                 'user_id'        => $user->id_user,
