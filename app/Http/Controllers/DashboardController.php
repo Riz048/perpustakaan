@@ -290,10 +290,7 @@ class DashboardController extends Controller
                 DB::table('riwayat_status_buku'),
                 $refDate
             )
-            ->where(function ($q) {
-                $q->whereNull('status')
-                ->orWhere('status','baik');
-            })
+            ->whereIn('status', ['baik','dipinjam'])
             ->count();
         $stokRusak = snapshot(
                 DB::table('riwayat_status_buku'),
@@ -335,8 +332,7 @@ class DashboardController extends Controller
                 DB::raw("
                     SUM(
                         CASE 
-                            WHEN rs.status IS NULL THEN 1
-                            WHEN rs.status = 'baik' THEN 1
+                            WHEN rs.status IN ('baik','dipinjam') THEN 1
                             ELSE 0
                         END
                     ) as jumlah
@@ -346,8 +342,7 @@ class DashboardController extends Controller
             ->havingRaw("
                 SUM(
                     CASE 
-                        WHEN rs.status IS NULL THEN 1
-                        WHEN rs.status = 'baik' THEN 1
+                        WHEN rs.status IN ('baik','dipinjam') THEN 1
                         ELSE 0
                     END
                 ) > 0
@@ -509,73 +504,28 @@ class DashboardController extends Controller
                         ->count();
 
         // jumlah JUDUL
-        $judulKelas10 = DB::table('riwayat_status_buku as rs')
-                        ->join('buku_eksemplar as e','e.id_eksemplar','=','rs.id_eksemplar')
-                        ->join('buku as b','b.id','=','e.buku_id')
-                        ->where('rs.tanggal_mulai','<=',$refDate)
-                        ->whereIn('rs.id', function ($q) use ($refDate) {
-                            $q->select(DB::raw('MAX(id)'))
-                            ->from('riwayat_status_buku')
-                            ->where('tanggal_mulai','<=',$refDate)
-                            ->groupBy('id_eksemplar');
-                        })
-                        ->where('b.kelas_akademik','10')
-                        ->distinct('b.id')
-                        ->count('b.id');
-        $judulKelas11 = DB::table('riwayat_status_buku as rs')
-                        ->join('buku_eksemplar as e','e.id_eksemplar','=','rs.id_eksemplar')
-                        ->join('buku as b','b.id','=','e.buku_id')
-                        ->where('rs.tanggal_mulai','<=',$refDate)
-                        ->whereIn('rs.id', function ($q) use ($refDate) {
-                            $q->select(DB::raw('MAX(id)'))
-                            ->from('riwayat_status_buku')
-                            ->where('tanggal_mulai','<=',$refDate)
-                            ->groupBy('id_eksemplar');
-                        })
-                        ->where('b.kelas_akademik','11')
-                        ->distinct('b.id')
-                        ->count('b.id');
-        $judulKelas12 = DB::table('riwayat_status_buku as rs')
-                        ->join('buku_eksemplar as e','e.id_eksemplar','=','rs.id_eksemplar')
-                        ->join('buku as b','b.id','=','e.buku_id')
-                        ->where('rs.tanggal_mulai','<=',$refDate)
-                        ->whereIn('rs.id', function ($q) use ($refDate) {
-                            $q->select(DB::raw('MAX(id)'))
-                            ->from('riwayat_status_buku')
-                            ->where('tanggal_mulai','<=',$refDate)
-                            ->groupBy('id_eksemplar');
-                        })
-                        ->where('b.kelas_akademik','12')
-                        ->distinct('b.id')
-                        ->count('b.id');
-        $judulFiksi = DB::table('riwayat_status_buku as rs')
-                        ->join('buku_eksemplar as e','e.id_eksemplar','=','rs.id_eksemplar')
-                        ->join('buku as b','b.id','=','e.buku_id')
-                        ->where('rs.tanggal_mulai','<=',$refDate)
-                        ->whereIn('rs.id', function ($q) use ($refDate) {
-                            $q->select(DB::raw('MAX(id)'))
-                            ->from('riwayat_status_buku')
-                            ->where('tanggal_mulai','<=',$refDate)
-                            ->groupBy('id_eksemplar');
-                        })
-                        ->where('b.kelas_akademik','non-akademik')
-                        ->where('tipe_bacaan','fiksi')
-                        ->distinct('b.id')
-                        ->count('b.id');
-        $judulNonFiksi = DB::table('riwayat_status_buku as rs')
-                        ->join('buku_eksemplar as e','e.id_eksemplar','=','rs.id_eksemplar')
-                        ->join('buku as b','b.id','=','e.buku_id')
-                        ->where('rs.tanggal_mulai','<=',$refDate)
-                        ->whereIn('rs.id', function ($q) use ($refDate) {
-                            $q->select(DB::raw('MAX(id)'))
-                            ->from('riwayat_status_buku')
-                            ->where('tanggal_mulai','<=',$refDate)
-                            ->groupBy('id_eksemplar');
-                        })
-                        ->where('b.kelas_akademik','non-akademik')
-                        ->where('tipe_bacaan','non-fiksi')
-                        ->distinct('b.id')
-                        ->count('b.id');
+        $judulKelas10 = DB::table('buku')
+            ->where('kelas_akademik','10')
+            ->whereDate('created_at','<=',$refDate)
+            ->count();
+        $judulKelas11 = DB::table('buku')
+            ->where('kelas_akademik','11')
+            ->whereDate('created_at','<=',$refDate)
+            ->count();
+        $judulKelas12 = DB::table('buku')
+            ->where('kelas_akademik','12')
+            ->whereDate('created_at','<=',$refDate)
+            ->count();
+        $judulFiksi = DB::table('buku')
+            ->where('kelas_akademik','non-akademik')
+            ->where('tipe_bacaan','fiksi')
+            ->whereDate('created_at','<=',$refDate)
+            ->count();
+        $judulNonFiksi = DB::table('buku')
+            ->where('kelas_akademik','non-akademik')
+            ->where('tipe_bacaan','non-fiksi')
+            ->whereDate('created_at','<=',$refDate)
+            ->count();
 
         // jumlah EKSEMPLAR
         $eksKelas10 = snapshot(

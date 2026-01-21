@@ -22,7 +22,6 @@ class PetugasController extends Controller
 
     public function store(Request $request)
     {
-
         $loginRole = auth()->user()->role;
 
         if ($loginRole === 'kep_perpus') {
@@ -36,33 +35,30 @@ class PetugasController extends Controller
             'role' => 'required|in:petugas,admin,kep_perpus,kepsek',
         ]);
 
-        $user = User::create([
-            'nama' => $request->nama,
-            'username' => $request->username,
-            'password' => Hash::make($request->password),
-            'role' => $request->role,
-            'telpon' => $request->telpon,
-            'alamat' => $request->alamat,
-            'kelamin' => $request->kelamin,
-            'tempat_lahir' => '-',
-            'tanggal_lahir' => date('Y-m-d'),
-            'foto' => '',
-        ]);
+        DB::transaction(function () use ($request) {
 
-        // riwayat_role_user
-        DB::table('riwayat_role_user')->insert([
-            'user_id'        => $user->id_user,
-            'role'           => $user->role,
-            'tanggal_mulai'  => now()->toDateString(),
-            'tanggal_selesai'=> null
-        ]);
+            $user = User::create([
+                'nama' => $request->nama,
+                'username' => $request->username,
+                'password' => Hash::make($request->password),
+                'role' => $request->role,
+                'telpon' => $request->telpon,
+                'alamat' => $request->alamat,
+                'kelamin' => $request->kelamin,
+                'tempat_lahir' => '-',
+                'tanggal_lahir' => now()->toDateString(),
+                'foto' => '',
+            ]);
 
-        if ($user->role === 'petugas') {
-            \DB::table('petugas')->updateOrInsert(
-                ['id_pegawai' => $user->id_user],
-                ['status' => 'aktif']
-            );
-        }
+            DB::table('riwayat_role_user')->insert([
+                'user_id' => $user->id_user,
+                'role' => $user->role,
+                'tanggal_mulai' => now()->toDateString(),
+                'tanggal_selesai' => null
+            ]);
+
+            app(UserController::class)->syncRoleTables($user);
+        });
 
         return back()->with('success','Data petugas berhasil ditambahkan');
     }
@@ -77,11 +73,10 @@ class PetugasController extends Controller
             'role' => 'required|in:petugas,guru,admin,kep_perpus,kepsek',
         ]);
 
-        DB::beginTransaction();
-        try {
+        DB::transaction(function () use ($request, $user) {
+
             $oldRole = $user->role;
 
-            // update user
             $user->update([
                 'nama' => $request->nama,
                 'username' => $request->username,
@@ -91,42 +86,25 @@ class PetugasController extends Controller
                 'kelamin' => $request->kelamin,
             ]);
 
-            // riwayat role
-            if ($oldRole !== $request->role) {
+            if ($oldRole !== $user->role) {
+
                 DB::table('riwayat_role_user')
-                    ->where('user_id', $id)
+                    ->where('user_id', $user->id_user)
                     ->whereNull('tanggal_selesai')
-                    ->update([
-                        'tanggal_selesai' => now()->toDateString()
-                    ]);
+                    ->update(['tanggal_selesai' => now()->toDateString()]);
 
                 DB::table('riwayat_role_user')->insert([
-                    'user_id' => $id,
-                    'role' => $request->role,
+                    'user_id' => $user->id_user,
+                    'role' => $user->role,
                     'tanggal_mulai' => now()->toDateString(),
                     'tanggal_selesai' => null
                 ]);
+
+                app(UserController::class)->syncRoleTables($user);
             }
+        });
 
-            // sinkron petugas
-            if ($request->role === 'petugas') {
-                DB::table('petugas')->updateOrInsert(
-                    ['id_pegawai' => $id],
-                    ['status' => 'aktif']
-                );
-            } else {
-                DB::table('petugas')
-                    ->where('id_pegawai', $id)
-                    ->update(['status' => 'non-aktif']);
-            }
-
-            DB::commit();
-            return back()->with('success','Data petugas diperbarui');
-
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            return back()->withErrors($e->getMessage());
-        }
+        return back()->with('success','Data petugas diperbarui');
     }
 
     public function destroy($id)

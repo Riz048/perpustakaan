@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\EksemplarService;
 use App\Models\Buku;
 use App\Models\BukuEksemplar;
 use Illuminate\Http\Request;

@@ -112,10 +112,17 @@
                 </div>
             @endif
 
-            <table class="table table-bordered">
+            <div class="row mb-2">
+                <div class="col-md-4">
+                    <input type="text" id="searchNama" class="form-control form-control-sm"
+                        placeholder="Cari nama...">
+                </div>
+            </div>
+
+            <table class="table table-bordered" id="tabelPaket">
                 <thead>
                     <tr>
-                        <th>Nama Siswa</th>
+                        <th>Nama</th>
                         <th>Aksi</th>
                         <th>Status</th>
                     </tr>
@@ -220,6 +227,25 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     syncUI();
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const searchInput = document.getElementById('searchNama');
+    const table = document.getElementById('tabelPaket');
+
+    if (!searchInput || !table) return;
+
+    searchInput.addEventListener('keyup', function () {
+        const keyword = this.value.toLowerCase();
+        const rows = table.querySelectorAll('tbody tr');
+
+        rows.forEach(row => {
+            const nama = row.cells[0].innerText.toLowerCase();
+            row.style.display = nama.includes(keyword) ? '' : 'none';
+        });
+    });
 });
 </script>
 

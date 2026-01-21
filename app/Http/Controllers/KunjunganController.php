@@ -110,8 +110,8 @@ class KunjunganController extends Controller
         }
 
         $data = $query
-            ->orderBy('tanggal_kunjungan', 'desc')
-            ->orderBy('created_at', 'desc')
+            ->orderBy('tanggal_kunjungan', 'asc')
+            ->orderBy('created_at', 'asc')
             ->get();
 
         return view('admin.kunjungan_tamu', compact('data'));

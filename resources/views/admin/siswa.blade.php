@@ -96,7 +96,16 @@
                                     )">
                                     <i class="fas fa-edit"></i>
                                 </button>
-
+                                <form action="{{ route('users.nonaktif', $user->id_user) }}"
+                                    method="POST"
+                                    style="display:inline"
+                                    onsubmit="return confirm('Yakin menonaktifkan siswa ini?')">
+                                    @csrf
+                                    @method('PATCH')
+                                    <button class="btn btn-danger btn-sm">
+                                        <i class="fas fa-user-slash"></i>
+                                    </button>
+                                </form>
                             </td>
                             @endif
                         </tr>

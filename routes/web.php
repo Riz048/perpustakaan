@@ -62,6 +62,8 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware([RoleMiddleware::class . ':siswa,guru,petugas,kep_perpus,kepsek'])->group(function () {
         Route::get('/riwayat', [UserController::class, 'riwayat'])->name('user.transaksi.riwayat');
     });
+    Route::patch('/users/{id}/nonaktif', [UserController::class, 'nonaktif'])
+        ->name('users.nonaktif');
 
     // Staff
     Route::middleware([RoleMiddleware::class . ':admin,kep_perpus,kepsek,petugas'])->group(function () {

@@ -93,8 +93,6 @@ class BukuAkademikImport implements ToCollection, WithHeadingRow
 
     private function buatEksemplar($bukuId, $status, $jumlah)
     {
-        $service = app(EksemplarService::class);
-
         for ($i = 1; $i <= $jumlah; $i++) {
 
             $eksemplar = BukuEksemplar::create([
@@ -103,13 +101,13 @@ class BukuAkademikImport implements ToCollection, WithHeadingRow
                 'status'         => $status,
             ]);
 
-            $service->ubahStatus(
-                $eksemplar->id_eksemplar,
-                $status,
-                'tambah buku',
-                auth()->id(),
-                'Tambah eksemplar baru'
-            );
+            DB::table('riwayat_status_buku')->insert([
+                'id_eksemplar'    => $eksemplar->id_eksemplar,
+                'status'          => $status,
+                'tanggal_mulai'   => now(),
+                'tanggal_selesai' => null,
+                'keterangan'      => 'Import buku'
+            ]);
         }
     }
 }

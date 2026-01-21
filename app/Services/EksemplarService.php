@@ -24,33 +24,32 @@ class EksemplarService
         ) {
 
             // tutup status lama
-            RiwayatStatusBuku::where('id_eksemplar', $idEksemplar)
+            DB::table('riwayat_status_buku')
+                ->where('id_eksemplar', $idEksemplar)
                 ->whereNull('tanggal_selesai')
-                ->update(['tanggal_selesai' => now()->toDateString()]);
+                ->update([
+                    'tanggal_selesai' => now()
+                ]);
 
             // buka status baru
-            RiwayatStatusBuku::create([
+            DB::table('riwayat_status_buku')->insert([
                 'id_eksemplar'    => $idEksemplar,
                 'status'          => $statusBaru,
-                'tanggal_mulai'   => now()->toDateString(),
+                'tanggal_mulai'   => now(),
                 'tanggal_selesai' => null,
                 'keterangan'      => $keterangan,
             ]);
 
-            // sinkron tabel utama
-            BukuEksemplar::where('id_eksemplar', $idEksemplar)
-                ->update(['status' => $statusBaru]);
-
-            // log
             if ($userId) {
                 DB::table('log_status_buku')->insert([
-                    'id_eksemplar'   => $idEksemplar,
-                    'user_id'        => $userId,
-                    'perubahan_ke'   => $statusBaru,
-                    'alasan'         => $alasan ?? $keterangan,
-                    'tanggal'        => now(),
+                    'id_eksemplar' => $idEksemplar,
+                    'user_id'      => $userId,
+                    'perubahan_ke' => $statusBaru,
+                    'alasan'       => $alasan ?? $keterangan,
+                    'tanggal'      => now(),
                 ]);
             }
         });
     }
 }
+

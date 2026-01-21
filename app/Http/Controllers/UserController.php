@@ -20,8 +20,8 @@ class UserController extends Controller
     // list siswa
     public function siswa(Request $request)
     {
-        $query = User::with('kelasAktif')
-            ->where('role', 'siswa');
+        $query = User::where('role','siswa')
+            ->whereHas('siswa', fn($q) => $q->where('status','aktif'));
 
         $tingkat = $request->tingkat;
 
@@ -39,8 +39,9 @@ class UserController extends Controller
     // list guru
     public function guru()
     {
-        $users = User::where('role', 'guru')
-            ->orderBy('id_user', 'desc')
+        $users = User::where('role','guru')
+            ->whereHas('guru', fn($q) => $q->where('status','aktif'))
+            ->orderByDesc('id_user')
             ->get();
 
         return view('admin.guru', compact('users'));
@@ -77,6 +78,14 @@ class UserController extends Controller
                     : null,
             ]);
 
+            if ($user->role === 'siswa') {
+                DB::table('siswa')->insert([
+                    'id_siswa'      => $user->id_user,
+                    'status'        => 'aktif',
+                    'tanggal_keluar'=> null,
+                    'keterangan'    => null,
+                ]);
+            }
             // riwayat_role_user
             DB::table('riwayat_role_user')->insert([
                 'user_id'        => $user->id_user,
@@ -144,15 +153,17 @@ class UserController extends Controller
             'role'     => 'required|in:siswa,guru,petugas,admin,kep_perpus,kepsek',
         ]);
 
-        DB::beginTransaction();
-        try {
+        DB::transaction(function () use ($request, $user) {
+
             $oldRole = $user->role;
 
             // update user
-            $data = $request->except(['password','foto']);
+            $data = $request->except(['password','foto','tingkat','rombel','tahun_ajaran','semester']);
+
             if ($request->filled('password')) {
                 $data['password'] = Hash::make($request->password);
             }
+
             if ($request->hasFile('foto')) {
                 if ($user->foto && Storage::disk('public')->exists($user->foto)) {
                     Storage::disk('public')->delete($user->foto);
@@ -162,41 +173,34 @@ class UserController extends Controller
 
             $user->update($data);
 
-            // riwayat role
-            if ($oldRole !== $request->role) {
+            if ($oldRole !== $user->role) {
+
                 DB::table('riwayat_role_user')
                     ->where('user_id', $user->id_user)
                     ->whereNull('tanggal_selesai')
-                    ->update([
-                        'tanggal_selesai' => now()->toDateString()
-                    ]);
+                    ->update(['tanggal_selesai' => now()->toDateString()]);
 
                 DB::table('riwayat_role_user')->insert([
                     'user_id' => $user->id_user,
-                    'role' => $request->role,
+                    'role' => $user->role,
                     'tanggal_mulai' => now()->toDateString(),
                     'tanggal_selesai' => null
                 ]);
+
+                $this->syncRoleTables($user);
             }
 
-            // sinkron petugas
-            if ($request->role === 'petugas') {
-                DB::table('petugas')->updateOrInsert(
-                    ['id_pegawai' => $user->id_user],
-                    ['status' => 'aktif']
-                );
-            } else {
-                DB::table('petugas')
-                    ->where('id_pegawai', $user->id_user)
-                    ->update(['status' => 'non-aktif']);
-            }
-
-            // khusus siswa → kelas
-            if ($request->role === 'siswa') {
+            if (
+                $user->role === 'siswa' &&
+                $request->filled(['tingkat','rombel','tahun_ajaran','semester'])
+            ) {
                 DB::table('riwayat_kelas_siswa')
                     ->where('user_id', $user->id_user)
                     ->where('status','aktif')
-                    ->update(['status'=>'lulus']);
+                    ->update([
+                        'status' => 'non-aktif',
+                        'tanggal_selesai' => now()->toDateString()
+                    ]);
 
                 DB::table('riwayat_kelas_siswa')->insert([
                     'user_id' => $user->id_user,
@@ -208,14 +212,9 @@ class UserController extends Controller
                     'tanggal_mulai' => now()->toDateString()
                 ]);
             }
+        });
 
-            DB::commit();
-            return back()->with('success','Data user diperbarui');
-
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            return back()->withErrors($e->getMessage());
-        }
+        return back()->with('success','Data user diperbarui');
     }
 
     // hapus user
@@ -232,7 +231,32 @@ class UserController extends Controller
             ->where('id_pegawai', $user->id_user)
             ->update(['status' => 'non-aktif']);
 
-        $user->delete();
+        DB::transaction(function () use ($user) {
+
+            DB::table('petugas')
+                ->where('id_pegawai', $user->id_user)
+                ->update(['status' => 'non-aktif']);
+
+            DB::table('guru')
+                ->where('id_guru', $user->id_user)
+                ->update([
+                    'status' => 'non-aktif',
+                    'tanggal_selesai' => now(),
+                    'keterangan' => 'Dihapus dari sistem'
+                ]);
+
+            DB::table('siswa')
+                ->where('id_siswa', $user->id_user)
+                ->update([
+                    'status' => 'non-aktif',
+                    'tanggal_keluar' => now(),
+                    'keterangan' => 'Dihapus dari sistem'
+                ]);
+
+            DB::table('user')
+                ->where('id_user', $user->id_user)
+                ->update(['status' => 'non-aktif']);
+        });
 
         $route = match ($user->role) {
             'siswa' => 'users.siswa',
@@ -294,5 +318,102 @@ class UserController extends Controller
         }
 
         return back()->with('success','Data guru berhasil diimport');
+    }
+
+    public function nonaktif($id)
+    {
+        DB::transaction(function () use ($id) {
+
+            // nonaktifkan user
+            DB::table('user')
+                ->where('id_user', $id)
+                ->update(['status' => 'non-aktif']);
+
+            // jika siswa → nonaktifkan data siswa
+            DB::table('siswa')
+                ->where('id_siswa', $id)
+                ->where('status', 'aktif')
+                ->update([
+                    'status' => 'non-aktif',
+                    'tanggal_keluar' => now()->toDateString(),
+                    'keterangan' => 'Dinonaktifkan dari sistem'
+                ]);
+
+            // tutup kelas aktif siswa
+            DB::table('riwayat_kelas_siswa')
+                ->where('user_id', $id)
+                ->where('status', 'aktif')
+                ->update([
+                    'status' => 'non-aktif',
+                    'tanggal_selesai' => now()->toDateString()
+                ]);
+
+            // jika petugas → nonaktifkan
+            DB::table('petugas')
+                ->where('id_pegawai', $id)
+                ->update(['status' => 'non-aktif']);
+
+            // jika guru → nonaktifkan
+            DB::table('guru')
+                ->where('id_guru', $id)
+                ->where('status','aktif')
+                ->update([
+                    'status' => 'non-aktif',
+                    'tanggal_selesai' => now()->toDateString(),
+                    'keterangan' => 'Dinonaktifkan dari sistem'
+                ]);
+        });
+
+        return back()->with('success', 'User berhasil dinonaktifkan');
+    }
+
+    public function syncRoleTables(User $user)
+    {
+        $id = $user->id_user;
+
+        DB::table('petugas')->where('id_pegawai', $id)->update(['status' => 'non-aktif']);
+        DB::table('guru')->where('id_guru', $id)->update([
+            'status' => 'non-aktif',
+            'tanggal_selesai' => now(),
+        ]);
+        DB::table('siswa')->where('id_siswa', $id)->update([
+            'status' => 'non-aktif',
+            'tanggal_keluar' => now(),
+        ]);
+
+        switch ($user->role) {
+            case 'petugas':
+            case 'admin':
+            case 'kepsek':
+            case 'kep_perpus':
+                DB::table('petugas')->updateOrInsert(
+                    ['id_pegawai' => $id],
+                    ['status' => 'aktif']
+                );
+                break;
+
+            case 'guru':
+                DB::table('guru')->updateOrInsert(
+                    ['id_guru' => $id],
+                    [
+                        'status' => 'aktif',
+                        'tanggal_mulai' => now(),
+                        'tanggal_selesai' => null,
+                        'keterangan' => 'Aktif sebagai guru'
+                    ]
+                );
+                break;
+
+            case 'siswa':
+                DB::table('siswa')->updateOrInsert(
+                    ['id_siswa' => $id],
+                    [
+                        'status' => 'aktif',
+                        'tanggal_keluar' => null,
+                        'keterangan' => null
+                    ]
+                );
+                break;
+        }
     }
 }

@@ -109,7 +109,7 @@ class PeminjamanWajibController extends Controller
 
                 foreach ($paket->detail as $detail) {
 
-                    $eksemplars = BukuEksemplar::where('buku_id',$detail->buku_id)
+                    $eksemplars = BukuEksemplar::where('buku_id', $detail->buku_id)
                         ->whereIn('id_eksemplar', function ($q) {
                             $q->select('id_eksemplar')
                             ->from('riwayat_status_buku')
@@ -124,16 +124,18 @@ class PeminjamanWajibController extends Controller
                         ->get();
 
                     if ($eksemplars->count() < $detail->jumlah) {
-                        throw new \Exception('Stok eksemplar tidak cukup');
+                        throw new \Exception(
+                            "Stok buku '{$detail->buku->judul}' tidak cukup"
+                        );
                     }
 
                     foreach ($eksemplars as $eks) {
 
                         PeminjamanDetail::create([
-                            'peminjaman_id'   => $peminjaman->id,
-                            'eksemplar_id'    => $eks->id_eksemplar,
-                            'kondisi_buku'    => 'baik',
-                            'status_transaksi'=> 'dipinjam',
+                            'peminjaman_id'    => $peminjaman->id,
+                            'eksemplar_id'     => $eks->id_eksemplar,
+                            'kondisi_buku'     => 'baik',
+                            'status_transaksi' => 'dipinjam',
                         ]);
 
                         $eksemplarService->ubahStatus(
