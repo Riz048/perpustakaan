@@ -25,4 +25,13 @@ class BukuEksemplar extends Model
     {
         return $this->hasMany(PeminjamanDetail::class, 'eksemplar_id');
     }
+
+    public function riwayatStatus()
+    {
+        return $this->hasMany(
+            RiwayatStatusBuku::class,
+            'id_eksemplar',
+            'id_eksemplar'
+        );
+    }    
 }

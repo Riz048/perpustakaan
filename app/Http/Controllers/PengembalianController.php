@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\EksemplarService;
 use App\Models\Pengembalian;
 use App\Models\Peminjaman;
 use Illuminate\Http\Request;
@@ -33,7 +34,7 @@ class PengembalianController extends Controller
         return view('admin.pengembalian', compact('pengembalian', 'peminjamanAktif'));
     }
 
-    public function store(Request $request)
+    public function store(Request $request, EksemplarService $eksemplarService)
     {
         if (Pengembalian::where('peminjaman_id', $request->peminjaman_id)->exists()) {
             return back()->withErrors('Peminjaman ini sudah dikembalikan.');
@@ -62,10 +63,10 @@ class PengembalianController extends Controller
 
         $pinjam = Peminjaman::with('detail')->findOrFail($request->peminjaman_id);
 
-        // Mode pengembalian
+        // mode pengembalian
         $mode = $request->mode_pengembalian ?? 'biasa';
 
-        // Kunci role
+        // kunci role
         if (
             $mode === 'paket' &&
             !in_array(auth()->user()->role, ['kep_perpus','admin','kepsek'])
@@ -77,94 +78,80 @@ class PengembalianController extends Controller
             return back()->withErrors('Detail peminjaman tidak ditemukan.');
         }
 
-        // foto bukti
-        $path = '-';
-        if ($request->hasFile('foto_bukti')) {
-            $path = $request->file('foto_bukti')->store('bukti_kembali', 'public');
-        }
-
-        // Cek role untuk buku wajib
-        if (
-            $pinjam->keterangan === 'BUKU_WAJIB' &&
-            !in_array(auth()->user()->role, ['kep_perpus','admin','kepsek'])
-        ) {
-            return back()->withErrors('Pengembalian buku wajib hanya bisa dilakukan oleh Kep. Perpus / Admin / Kepsek.');
-        }
-
-        DB::beginTransaction();
         try {
+            DB::transaction(function () use (
+                $request,
+                $eksemplarService,
+                $pinjam,
+                $mode,
+                &$pengembalian
+            ) {
 
-            // simpan pengembalian
-            $pengembalian = Pengembalian::create([
-                'peminjaman_id'   => $pinjam->id,
-                'tanggal_kembali' => now(),
-                'id_user'         => $pinjam->id_user,
-                'foto_bukti'      => $path
-            ]);
-
-            // loop dalam paket
-            $details = $pinjam->detail;
-
-            if ($details->isEmpty()) {
-                throw new \Exception('Detail peminjaman kosong.');
-            }
-
-            if ($mode === 'biasa') {
-                $details = $details->take(1);
-            }
-
-            foreach ($details as $detail) {
-
-                $kondisi = $mode === 'paket'
-                    ? ($request->kondisi[$detail->id] ?? 'baik')
-                    : $request->status_kondisi;
-
-                $detail->update([
-                    'kondisi_buku'     => $kondisi,
-                    'status_transaksi' => 'dikembalikan'
-                ]);
-
-                if (!$detail->eksemplar) {
-                    throw new \Exception('Eksemplar tidak ditemukan (detail ID: '.$detail->id.')');
+                // foto bukti
+                $path = '-';
+                if ($request->hasFile('foto_bukti')) {
+                    $path = $request->file('foto_bukti')->store('bukti_kembali', 'public');
                 }
 
-                $detail->eksemplar->update([
-                    'status' => $kondisi
+                // simpan pengembalian
+                $pengembalian = Pengembalian::create([
+                    'peminjaman_id'   => $pinjam->id,
+                    'tanggal_kembali' => now(),
+                    'id_user'         => $pinjam->id_user,
+                    'foto_bukti'      => $path
                 ]);
 
-                DB::table('log_status_buku')->insert([
-                    'buku_id' => $detail->eksemplar->buku_id,
-                    'user_id'        => auth()->id(),
-                    'perubahan_dari' => null,
-                    'perubahan_ke'   => $kondisi,
-                    'alasan' => $mode === 'paket'
-                        ? 'Pengembalian buku wajib'
-                        : 'Pengembalian buku biasa',
-                    'tanggal'        => now(),
-                ]);
+                $details = $pinjam->detail;
 
-                if (in_array($kondisi, ['rusak','hilang'])) {
-                    DB::table('log_pengembalian_bermasalah')->insert([
-                        'pengembalian_id' => $pengembalian->id,
-                        'buku_id'         => $detail->eksemplar->buku_id,
-                        'user_id'         => auth()->id(),
-                        'kondisi'         => $kondisi,
-                        'catatan'         => 'Dikembalikan dalam kondisi ' . $kondisi,
-                        'tanggal'         => now()
+                if ($mode === 'biasa') {
+                    $details = $details->take(1);
+                }
+
+                foreach ($details as $detail) {
+
+                    $kondisi = $mode === 'paket'
+                        ? ($request->kondisi[$detail->id] ?? 'baik')
+                        : $request->status_kondisi;
+
+                    if (!$detail->eksemplar) {
+                        throw new \Exception(
+                            'Eksemplar tidak ditemukan (detail ID: '.$detail->id.')'
+                        );
+                    }
+
+                    $detail->update([
+                        'kondisi_buku'     => $kondisi,
+                        'status_transaksi' => 'dikembalikan'
                     ]);
+
+                    // SATU-SATUNYA TEMPAT UBAH STATUS
+                    $eksemplarService->ubahStatus(
+                        $detail->eksemplar->id_eksemplar,
+                        $kondisi,
+                        'pengembalian',
+                        auth()->id(),
+                        $mode === 'paket'
+                            ? 'Pengembalian buku wajib'
+                            : 'Pengembalian buku biasa'
+                    );
+
+                    if (in_array($kondisi, ['rusak','hilang'])) {
+                        DB::table('log_pengembalian_bermasalah')->insert([
+                            'pengembalian_id' => $pengembalian->id,
+                            'id_eksemplar'    => $detail->eksemplar->id_eksemplar,
+                            'user_id'         => auth()->id(),
+                            'kondisi'         => $kondisi,
+                            'catatan'         => 'Dikembalikan dalam kondisi ' . $kondisi,
+                            'tanggal'         => now()
+                        ]);
+                    }
                 }
-            }
 
-            // tutup peminjaman
-            $pinjam->update([
-                'status' => 'dikembalikan'
-            ]);
-
-            DB::commit();
+                $pinjam->update(['status' => 'dikembalikan']);
+            });
 
         } catch (\Throwable $e) {
-            DB::rollBack();
-            return back()->withErrors('Gagal menyimpan pengembalian: '.$e->getMessage());
+            return back()->withErrors($e->getMessage());
         }
 
         return redirect()
@@ -191,7 +178,7 @@ class PengembalianController extends Controller
         );
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, $id, EksemplarService $eksemplarService)
     {
         $pengembalian = Pengembalian::with('peminjaman.detail')->findOrFail($id);
 
@@ -214,19 +201,11 @@ class PengembalianController extends Controller
                 'kondisi_buku' => $baru
             ]);
 
-            $detail->eksemplar->update([
-                'status' => $baru
-            ]);
-
-            DB::table('log_status_buku')->insert([
-                'buku_id'        => $detail->eksemplar->buku_id,
-                'user_id'        => auth()->id(),
-                'perubahan_dari' => $lama,
-                'perubahan_ke'   => $baru,
-                'alasan'         => 'Edit pengembalian buku biasa',
-                'tanggal'        => now(),
-                'foto_bukti'     => $pengembalian->foto_bukti
-            ]);
+            $eksemplarService->ubahStatus(
+                $detail->eksemplar->id_eksemplar,
+                $baru,
+                'edit pengembalian'
+            );
 
             return back()->with('success', 'Status buku berhasil diperbarui.');
         }
@@ -240,25 +219,17 @@ class PengembalianController extends Controller
 
             $detail->update(['kondisi_buku' => $baru]);
 
-            $detail->eksemplar->update([
-                'status' => $baru
-            ]);
-
-            DB::table('log_status_buku')->insert([
-                'buku_id'        => $detail->eksemplar->buku_id,
-                'user_id'        => auth()->id(),
-                'perubahan_dari' => $lama,
-                'perubahan_ke'   => $baru,
-                'alasan'         => 'Edit pengembalian paket',
-                'tanggal'        => now(),
-                'foto_bukti'     => $pengembalian->foto_bukti
-            ]);
+            $eksemplarService->ubahStatus(
+                $detail->eksemplar->id_eksemplar,
+                $baru,
+                'edit pengembalian paket'
+            );
         }
 
         return back()->with('success', 'Status buku paket berhasil diperbarui.');
     }
 
-    public function updatePaket(Request $request, $id)
+    public function updatePaket(Request $request, $id, EksemplarService $eksemplarService)
     {
         $pinjam = Peminjaman::with('detail')->findOrFail($id);
 
@@ -266,7 +237,18 @@ class PengembalianController extends Controller
 
         foreach ($details as $detail) {
             if (!isset($request->kondisi[$detail->id])) continue;
-            $detail->update(['kondisi_buku' => $request->kondisi[$detail->id]]);
+
+            $baru = $request->kondisi[$detail->id];
+
+            $detail->update(['kondisi_buku' => $baru]);
+
+            $eksemplarService->ubahStatus(
+                $detail->eksemplar->id_eksemplar,
+                $baru,
+                'edit pengembalian paket',
+                auth()->id(),
+                'Edit kondisi buku paket'
+            );
         }
 
         return back()->with('success', 'Kondisi buku paket diperbarui.');

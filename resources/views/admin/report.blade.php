@@ -367,7 +367,7 @@
         @endif
     @endif
 
-    <br>
+    <!-- <br>
     <table style="width:100%; border:none;">
         <tr>
             <td style="width:60%; border:none;"></td>
@@ -377,7 +377,7 @@
                 <strong>{{ $kepalaPerpus->nama ?? '____________________' }}</strong>
             </td>
         </tr>
-    </table>
+    </table> -->
    
 
 </body>

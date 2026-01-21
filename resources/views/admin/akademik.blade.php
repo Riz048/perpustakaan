@@ -113,23 +113,23 @@
                             <td class="text-center">
                                 <button class="btn btn-warning btn-sm" data-toggle="modal" data-target="#modalEditAkad"
                                     onclick="loadEditAkad(
-                '{{ $item->id }}',
-                '{{ $item->kelas_akademik }}',
-                '{{ $item->tipe_bacaan }}',
-                '{{ $item->kode_buku }}',
-                '{{ $item->judul }}',
-                '{{ $item->nama_penerbit }}',
-                '{{ $item->isbn }}',
-                '{{ $item->pengarang }}',
-                '{{ $item->jumlah_baik }}',
-                '{{ $item->jumlah_rusak }}',
-                '{{ $item->jumlah_hilang }}',
-                '{{ $item->tahun_terbit }}',
-                '{{ $item->tahun_masuk }}',
-                '{{ $item->sinopsis }}',
-                '{{ $item->keterangan }}',
-                '{{ $item->gambar }}'
-              )">
+                                    '{{ $item->id }}',
+                                    '{{ $item->kelas_akademik }}',
+                                    '{{ $item->tipe_bacaan }}',
+                                    '{{ $item->kode_buku }}',
+                                    '{{ $item->judul }}',
+                                    '{{ $item->nama_penerbit }}',
+                                    '{{ $item->isbn }}',
+                                    '{{ $item->pengarang }}',
+                                    '{{ $item->jumlah_baik }}',
+                                    '{{ $item->jumlah_rusak }}',
+                                    '{{ $item->jumlah_hilang }}',
+                                    '{{ $item->tahun_terbit }}',
+                                    '{{ $item->tahun_masuk }}',
+                                    '{{ $item->sinopsis }}',
+                                    '{{ $item->keterangan }}',
+                                    '{{ $item->gambar }}'
+                                )">
                                     <i class="fas fa-edit"></i>
                                 </button>
 

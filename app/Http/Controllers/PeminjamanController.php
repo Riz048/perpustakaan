@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\EksemplarService;
 use App\Models\Buku;
 use App\Models\BukuEksemplar;
 use App\Models\Peminjaman;
@@ -37,131 +38,151 @@ class PeminjamanController extends Controller
                 return '2-' . $u->nama;
             });
         
-        $bukus = Buku::whereHas('eksemplar', function ($q) {
-            $q->where('status', 'baik')
-            ->whereDoesntHave('peminjamanDetail', function ($p) {
-                $p->where('status_transaksi', 'dipinjam');
-            });
-        })->get();
+        $eksemplars = BukuEksemplar::with('buku')
+            ->whereIn('id_eksemplar', function ($q) {
+                $q->select('id_eksemplar')
+                ->from('riwayat_status_buku')
+                ->where('status', 'baik')
+                ->whereNull('tanggal_selesai');
+            })
+            ->whereDoesntHave('peminjamanDetail', fn ($q) =>
+                $q->where('status_transaksi', 'dipinjam')
+            )
+            ->get()
+            ->groupBy('buku_id');
 
-        return view('admin.peminjaman', compact('peminjaman', 'users', 'bukus'));
+        return view('admin.peminjaman', compact('peminjaman', 'users', 'eksemplars'));
     }
 
-    public function store(Request $request)
+    public function store(Request $request, EksemplarService $eksemplarService)
     {
         $request->validate([
             'id_user' => 'required|exists:user,id_user',
-            'id_buku' => 'required|exists:buku,id',
+            'eksemplar_id' => 'required|exists:buku_eksemplar,id_eksemplar',
             'tanggal_pinjam' => 'required|date',
             'lama_pinjam' => 'required|numeric',
         ]);
 
         $keterangan = $request->keterangan ?? '-';
-        
-        $isBukuWajib = ($request->keterangan === 'BUKU_WAJIB');
+        $isBukuWajib = ($keterangan === 'BUKU_WAJIB');
 
-        // hanya batasi kalau buku biasa
+        // validasi buku biasa
         if (!$isBukuWajib) {
-
-            // masih punya buku biasa yang belum dikembalikan
             $masihPinjam = Peminjaman::where('id_user', $request->id_user)
-                ->where('status', 'dipinjam')
-                ->where('keterangan', '!=', 'BUKU_WAJIB')
+                ->where('status','dipinjam')
+                ->where('keterangan','!=','BUKU_WAJIB')
                 ->exists();
 
             if ($masihPinjam) {
-                return back()->withErrors(
-                    'Siswa masih memiliki buku yang belum dikembalikan.'
-                );
+                return back()->withErrors('Siswa masih memiliki buku yang belum dikembalikan.');
             }
 
-            // batas minggu kalender (Senin - Minggu)
-            $awalMinggu = Carbon::now()->startOfWeek(Carbon::MONDAY);
-            $akhirMinggu = Carbon::now()->endOfWeek(Carbon::SUNDAY);
+            $awalMinggu = Carbon::now()->startOfWeek();
+            $akhirMinggu = Carbon::now()->endOfWeek();
 
-            $sudahPinjamMingguIni = Peminjaman::where('id_user', $request->id_user)
-                ->where('keterangan', '!=', 'BUKU_WAJIB')
-                ->whereBetween('tanggal_pinjam', [$awalMinggu, $akhirMinggu])
+            $sudahPinjam = Peminjaman::where('id_user',$request->id_user)
+                ->where('keterangan','!=','BUKU_WAJIB')
+                ->whereBetween('tanggal_pinjam',[$awalMinggu,$akhirMinggu])
                 ->exists();
 
-            if ($sudahPinjamMingguIni) {
-                return back()->withErrors(
-                    'Siswa hanya boleh meminjam 1 buku biasa dalam satu minggu.'
-                );
+            if ($sudahPinjam) {
+                return back()->withErrors('Siswa hanya boleh meminjam 1 buku per minggu.');
             }
         }
 
-        $peminjaman = Peminjaman::create([
-            'tanggal_pinjam' => $request->tanggal_pinjam,
-            'lama_pinjam'    => $request->lama_pinjam,
-            'keterangan'     => $keterangan,
-            'status'         => 'dipinjam',
-            'id_user'        => $request->id_user,
-            'id_pegawai'     => Auth::id() ?? 1
-        ]);
+        DB::transaction(function () use ($request, $keterangan, $eksemplarService) {
 
-        $eksemplar = BukuEksemplar::where('buku_id', $request->id_buku)
-            ->where('status', 'baik')
-            ->whereDoesntHave('peminjamanDetail', function ($q) {
-                $q->where('status_transaksi', 'dipinjam');
-            })
-            ->first();
+            $peminjaman = Peminjaman::create([
+                'tanggal_pinjam' => $request->tanggal_pinjam,
+                'lama_pinjam'    => $request->lama_pinjam,
+                'keterangan'     => $keterangan,
+                'status'         => 'dipinjam',
+                'id_user'        => $request->id_user,
+                'id_pegawai'     => auth()->id()
+            ]);
 
-        if (!$eksemplar) {
-            return back()->withErrors('Buku tidak tersedia untuk dipinjam.');
-        }
+            $eksemplar = BukuEksemplar::where('id_eksemplar',$request->eksemplar_id)
+                ->whereIn('id_eksemplar', function ($q) {
+                    $q->select('id_eksemplar')
+                    ->from('riwayat_status_buku')
+                    ->where('status','baik')
+                    ->whereNull('tanggal_selesai');
+                })
+                ->whereDoesntHave('peminjamanDetail', fn($q) =>
+                    $q->where('status_transaksi','dipinjam')
+                )
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        PeminjamanDetail::create([
-        'peminjaman_id'     => $peminjaman->id,
-        'eksemplar_id'      => $eksemplar->id_eksemplar,
-        'status_transaksi'  => 'dipinjam'
-        ]);
+            PeminjamanDetail::create([
+                'peminjaman_id'    => $peminjaman->id,
+                'eksemplar_id'     => $eksemplar->id_eksemplar,
+                'status_transaksi'=> 'dipinjam'
+            ]);
 
-        return back()->with('success', 'Transaksi peminjaman berhasil ditambahkan');
+            $eksemplarService->ubahStatus(
+                $eksemplar->id_eksemplar,
+                'dipinjam',
+                'peminjaman',
+                auth()->id(),
+                'Peminjaman buku'
+            );
+        });
+
+        return back()->with('success','Transaksi peminjaman berhasil ditambahkan');
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, $id, EksemplarService $eksemplarService)
     {
-        $pinjam = Peminjaman::findOrFail($id);
+        $pinjam = Peminjaman::with('detail')->findOrFail($id);
 
-        $request->validate([
-            'id_user' => 'required|exists:user,id_user',
-            'tanggal_pinjam' => 'required|date',
-            'lama_pinjam' => 'required|numeric',
-        ]);
+        DB::transaction(function () use ($request, $pinjam, $eksemplarService) {
+            $pinjam->update([
+                'tanggal_pinjam' => $request->tanggal_pinjam,
+                'lama_pinjam'    => $request->lama_pinjam,
+                'id_user'        => $request->id_user,
+                'keterangan'     => $request->keterangan,
+            ]);
 
-        // Update peminjaman utama
-        $pinjam->update([
-            'tanggal_pinjam' => $request->tanggal_pinjam,
-            'lama_pinjam'    => $request->lama_pinjam,
-            'id_user'        => $request->id_user,
-            'keterangan'     => $request->keterangan,
-        ]);
+            if ($request->eksemplar_id && $pinjam->detail->isNotEmpty()) {
 
-        if ($request->id_buku) {
-            $detail = $pinjam->detail()->first();
+                $detail = $pinjam->detail->first();
+                $eksemplarLama = $detail->eksemplar_id;
 
-            if ($detail) {
-                $eksemplarBaru = BukuEksemplar::where('buku_id', $request->id_buku)
-                    ->where('status', 'baik')
-                    ->whereDoesntHave('peminjamanDetail', function ($q) {
-                        $q->where('status_transaksi', 'dipinjam');
+                $eksemplarBaru = BukuEksemplar::where('id_eksemplar',$request->eksemplar_id)
+                    ->whereIn('id_eksemplar', function ($q) {
+                        $q->select('id_eksemplar')
+                        ->from('riwayat_status_buku')
+                        ->where('status','baik')
+                        ->whereNull('tanggal_selesai');
                     })
-                    ->first();
+                    ->whereDoesntHave('peminjamanDetail', fn($q) =>
+                        $q->where('status_transaksi','dipinjam')
+                    )
+                    ->lockForUpdate()
+                    ->firstOrFail();
 
-                if (!$eksemplarBaru) {
-                    return back()->withErrors(
-                        'Tidak ada eksemplar buku tersedia untuk diganti.'
-                    );
-                }
+                $eksemplarService->ubahStatus(
+                    $eksemplarLama,
+                    'baik',
+                    'ganti eksemplar',
+                    auth()->id(),
+                    'Eksemplar lama dikembalikan'
+                );
 
-                $detail->update([
-                    'eksemplar_id' => $eksemplarBaru->id_eksemplar
-                ]);
+                $detail->update(['eksemplar_id'=>$eksemplarBaru->id_eksemplar]);
+
+                $eksemplarService->ubahStatus(
+                    $eksemplarBaru->id_eksemplar,
+                    'dipinjam',
+                    'ganti eksemplar',
+                    auth()->id(),
+                    'Pengganti eksemplar'
+                );
             }
-        }
+        });
 
-        return back()->with('success', 'Data peminjaman berhasil diperbarui');
+        return back()->with('success','Data peminjaman berhasil diperbarui');
     }
     
     public function destroy($id)

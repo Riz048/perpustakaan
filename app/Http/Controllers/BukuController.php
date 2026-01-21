@@ -7,7 +7,6 @@ use App\Models\BukuEksemplar;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\DB;
 use App\Imports\BukuAkademikImport;
 use App\Exports\BukuAkademikTemplateExport;
 use App\Imports\BukuNonAkademikImport;
@@ -28,14 +27,20 @@ class BukuController extends Controller
 
                 $buku = Buku::where('kelas_akademik', '!=', 'non-akademik')
                     ->whereHas('eksemplar', function ($q) {
-                        $q->where('status', 'baik')
+                        $q->whereHas('riwayatStatus', function ($r) {
+                            $r->whereNull('tanggal_selesai')
+                            ->where('status','baik');
+                        })
                         ->whereDoesntHave('peminjamanDetail', function ($p) {
                             $p->where('status_transaksi', 'dipinjam');
                         });
                     })
                     ->withCount([
                         'eksemplar as buku_tersedia' => function ($q) {
-                            $q->where('status', 'baik')
+                            $q->whereHas('riwayatStatus', function ($r) {
+                                $r->whereNull('tanggal_selesai')
+                                ->where('status','baik');
+                            })
                             ->whereDoesntHave('peminjamanDetail', function ($p) {
                                 $p->where('status_transaksi', 'dipinjam');
                             });
@@ -66,7 +71,10 @@ class BukuController extends Controller
     {
         $buku = Buku::withCount([
             'eksemplar as buku_tersedia' => function ($q) {
-                $q->where('status', 'baik')
+                $q->whereHas('riwayatStatus', function ($r) {
+                    $r->whereNull('tanggal_selesai')
+                    ->where('status','baik');
+                })
                 ->whereDoesntHave('peminjamanDetail', function ($p) {
                     $p->where('status_transaksi', 'dipinjam');
                 });
@@ -85,25 +93,43 @@ class BukuController extends Controller
     // Admin Akademik
     public function indexAkademik()
     {
-        $buku = Buku::whereIn('kelas_akademik', ['10', '11', '12'])
+        $buku = Buku::whereIn('kelas_akademik', ['10','11','12'])
             ->withCount([
                 'eksemplar as buku_masuk',
-                'eksemplar as buku_tersedia' => function ($q) {
-                    $q->where('status', 'baik')
-                    ->whereDoesntHave('peminjamanDetail', function ($p) {
-                        $p->where('status_transaksi', 'dipinjam');
-                    });
-                },
+
                 'eksemplar as buku_dipinjam' => function ($q) {
-                    $q->whereHas('peminjamanDetail', function ($p) {
-                        $p->where('status_transaksi', 'dipinjam');
-                    });
+                    $q->whereHas('peminjamanDetail', fn ($p) =>
+                        $p->where('status_transaksi','dipinjam')
+                    );
                 },
-                'eksemplar as jumlah_baik'   => fn ($q) => $q->where('status', 'baik'),
-                'eksemplar as jumlah_rusak'  => fn ($q) => $q->where('status', 'rusak'),
-                'eksemplar as jumlah_hilang' => fn ($q) => $q->where('status', 'hilang'),
+
+                'eksemplar as buku_tersedia' => function ($q) {
+                    $q->whereHas('riwayatStatus', fn ($r) =>
+                            $r->whereNull('tanggal_selesai')
+                            ->where('status','baik')
+                        )
+                    ->whereDoesntHave('peminjamanDetail', fn ($p) =>
+                            $p->where('status_transaksi','dipinjam')
+                    );
+                },
             ])
-            ->get();
+            ->with([
+                'eksemplar.riwayatStatus' => fn ($q) =>
+                    $q->whereNull('tanggal_selesai')
+            ])
+            ->get()
+            ->each(function ($buku) {
+                $buku->jumlah_baik   = 0;
+                $buku->jumlah_rusak  = 0;
+                $buku->jumlah_hilang = 0;
+
+                foreach ($buku->eksemplar as $e) {
+                    $status = optional($e->riwayatStatus->first())->status;
+                    if ($status === 'baik')   $buku->jumlah_baik++;
+                    if ($status === 'rusak')  $buku->jumlah_rusak++;
+                    if ($status === 'hilang') $buku->jumlah_hilang++;
+                }
+            });
 
         return view('admin.akademik', compact('buku'));
     }
@@ -111,25 +137,43 @@ class BukuController extends Controller
     // Admin Non-Akademik
     public function indexNonAkademik()
     {
-        $buku = Buku::where('kelas_akademik', 'non-akademik')
+        $buku = Buku::where('kelas_akademik','non-akademik')
             ->withCount([
                 'eksemplar as buku_masuk',
-                'eksemplar as buku_tersedia' => function ($q) {
-                    $q->where('status', 'baik')
-                    ->whereDoesntHave('peminjamanDetail', function ($p) {
-                        $p->where('status_transaksi', 'dipinjam');
-                    });
-                },
+
                 'eksemplar as buku_dipinjam' => function ($q) {
-                    $q->whereHas('peminjamanDetail', function ($p) {
-                        $p->where('status_transaksi', 'dipinjam');
-                    });
+                    $q->whereHas('peminjamanDetail', fn ($p) =>
+                        $p->where('status_transaksi','dipinjam')
+                    );
                 },
-                'eksemplar as jumlah_baik'   => fn ($q) => $q->where('status', 'baik'),
-                'eksemplar as jumlah_rusak'  => fn ($q) => $q->where('status', 'rusak'),
-                'eksemplar as jumlah_hilang' => fn ($q) => $q->where('status', 'hilang'),
+
+                'eksemplar as buku_tersedia' => function ($q) {
+                    $q->whereHas('riwayatStatus', fn ($r) =>
+                            $r->whereNull('tanggal_selesai')
+                            ->where('status','baik')
+                        )
+                    ->whereDoesntHave('peminjamanDetail', fn ($p) =>
+                            $p->where('status_transaksi','dipinjam')
+                    );
+                },
             ])
-            ->get();
+            ->with([
+                'eksemplar.riwayatStatus' => fn ($q) =>
+                    $q->whereNull('tanggal_selesai')
+            ])
+            ->get()
+            ->each(function ($buku) {
+                $buku->jumlah_baik   = 0;
+                $buku->jumlah_rusak  = 0;
+                $buku->jumlah_hilang = 0;
+
+                foreach ($buku->eksemplar as $e) {
+                    $status = optional($e->riwayatStatus->first())->status;
+                    if ($status === 'baik')   $buku->jumlah_baik++;
+                    if ($status === 'rusak')  $buku->jumlah_rusak++;
+                    if ($status === 'hilang') $buku->jumlah_hilang++;
+                }
+            });
 
         return view('admin.nonakademik', compact('buku'));
     }
@@ -170,36 +214,23 @@ class BukuController extends Controller
     // Helper bikin eksemplar
     private function buatEksemplar($bukuId, $status, $jumlah)
     {
+        $service = app(EksemplarService::class);
+
         for ($i = 1; $i <= $jumlah; $i++) {
-            BukuEksemplar::create([
-                'buku_id' => $bukuId,
+
+            $eksemplar = BukuEksemplar::create([
+                'buku_id'        => $bukuId,
                 'kode_eksemplar' => uniqid('EK-'),
-                'status' => $status
+                'status'         => $status,
             ]);
-        }
-    }
 
-    private function syncEksemplar($bukuId, $status, $lama, $baru)
-    {
-        if ($baru > $lama) {
-            $tambah = $baru - $lama;
-
-            for ($i = 1; $i <= $tambah; $i++) {
-                BukuEksemplar::create([
-                    'buku_id' => $bukuId,
-                    'kode_eksemplar' => uniqid('EK-'),
-                    'status' => $status
-                ]);
-            }
-        }
-
-        if ($baru < $lama) {
-            $kurang = $lama - $baru;
-
-            BukuEksemplar::where('buku_id', $bukuId)
-                ->where('status', $status)
-                ->limit($kurang)
-                ->delete();
+            $service->ubahStatus(
+                $eksemplar->id_eksemplar,
+                $status,
+                'tambah buku',
+                auth()->id(),
+                'Tambah eksemplar baru'
+            );
         }
     }
 
@@ -208,45 +239,30 @@ class BukuController extends Controller
     {
         $buku = Buku::findOrFail($id);
 
-        DB::transaction(function () use ($request, $buku) {
+        $data = $request->only([
+            'tipe_bacaan',
+            'kode_buku',
+            'judul',
+            'nama_penerbit',
+            'isbn',
+            'pengarang',
+            'jlh_hal',
+            'tahun_terbit',
+            'sinopsis',
+            'keterangan',
+        ]);
 
-            $data = [
-                'tipe_bacaan'    => $request->tipe_bacaan ?? $buku->tipe_bacaan,
-                'kode_buku'      => $request->kode_buku ?? $buku->kode_buku,
-                'judul'          => $request->judul ?? $buku->judul,
-                'nama_penerbit'  => $request->nama_penerbit ?? $buku->nama_penerbit,
-                'isbn'           => $request->isbn ?? $buku->isbn,
-                'pengarang'      => $request->pengarang ?? $buku->pengarang,
-                'jlh_hal'        => $request->jlh_hal ?? $buku->jlh_hal,
-                'tahun_terbit'   => $request->tahun_terbit ?? $buku->tahun_terbit,
-                'sinopsis'       => $request->sinopsis ?? $buku->sinopsis,
-                'keterangan'     => $request->keterangan ?? $buku->keterangan,
-            ];
+        if ($buku->kelas_akademik !== 'non-akademik' && $request->filled('kelas_akademik')) {
+            $data['kelas_akademik'] = $request->kelas_akademik;
+        }
 
-            if ($buku->kelas_akademik !== 'non-akademik' && $request->filled('kelas_akademik')) {
-                $data['kelas_akademik'] = $request->kelas_akademik;
-            }
+        if ($request->hasFile('gambar')) {
+            $data['gambar'] = $request->file('gambar')->store('cover_buku', 'public');
+        }
 
-            if ($request->hasFile('gambar')) {
-                $data['gambar'] = $request->file('gambar')->store('cover_buku', 'public');
-            }
+        $buku->update($data);
 
-            $buku->update($data);
-
-            $lamaBaik   = $buku->eksemplar()->where('status', 'baik')->count();
-            $lamaRusak  = $buku->eksemplar()->where('status', 'rusak')->count();
-            $lamaHilang = $buku->eksemplar()->where('status', 'hilang')->count();
-
-            $baruBaik   = (int) ($request->stok_baik ?? $lamaBaik);
-            $baruRusak  = (int) ($request->stok_rusak ?? $lamaRusak);
-            $baruHilang = (int) ($request->stok_hilang ?? $lamaHilang);
-
-            $this->syncEksemplar($buku->id, 'baik', $lamaBaik, $baruBaik);
-            $this->syncEksemplar($buku->id, 'rusak', $lamaRusak, $baruRusak);
-            $this->syncEksemplar($buku->id, 'hilang', $lamaHilang, $baruHilang);
-        });
-
-        return back()->with('success', 'Data & stok buku berhasil diperbarui');
+        return back()->with('success', 'Data buku berhasil diperbarui');
     }
 
     // Hapus buku

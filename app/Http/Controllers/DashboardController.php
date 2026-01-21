@@ -137,32 +137,12 @@ class DashboardController extends Controller
         $refDate = $end;
 
         // RINGKASAN
-        $totalAkademik = DB::table('riwayat_status_buku as rs')
-            ->join('buku_eksemplar as e','e.id_eksemplar','=','rs.id_eksemplar')
-            ->join('buku as b','b.id','=','e.buku_id')
-            ->where('rs.tanggal_mulai','<=',$refDate)
-            ->whereIn('rs.id', function ($q) use ($refDate) {
-                $q->select(DB::raw('MAX(id)'))
-                ->from('riwayat_status_buku')
-                ->where('tanggal_mulai','<=',$refDate)
-                ->groupBy('id_eksemplar');
-            })
-            ->where('b.kelas_akademik','!=','non-akademik')
-            ->distinct('b.id')
-            ->count('b.id');
-        $totalNonAkademik = DB::table('riwayat_status_buku as rs')
-            ->join('buku_eksemplar as e','e.id_eksemplar','=','rs.id_eksemplar')
-            ->join('buku as b','b.id','=','e.buku_id')
-            ->where('rs.tanggal_mulai','<=',$refDate)
-            ->whereIn('rs.id', function ($q) use ($refDate) {
-                $q->select(DB::raw('MAX(id)'))
-                ->from('riwayat_status_buku')
-                ->where('tanggal_mulai','<=',$refDate)
-                ->groupBy('id_eksemplar');
-            })
-            ->where('b.kelas_akademik', 'non-akademik')
-            ->distinct('b.id')
-            ->count('b.id');
+        $totalAkademik = DB::table('buku')
+            ->where('kelas_akademik','!=','non-akademik')
+            ->count();
+        $totalNonAkademik = DB::table('buku')
+            ->where('kelas_akademik','non-akademik')
+            ->count();
         
         $roleAktif = snapshot(
                 DB::table('riwayat_role_user as r'),
@@ -170,53 +150,53 @@ class DashboardController extends Controller
                 'r.tanggal_mulai',
                 'r.tanggal_selesai'
             );
-$totalPegawai = snapshot(
-        DB::table('riwayat_role_user'),
-        $refDate,
-        'tanggal_mulai',
-        'tanggal_selesai'
-    )
-    ->whereIn('role',['guru','petugas','kep_perpus','kepsek'])
-    ->distinct('user_id')
-    ->count('user_id');
-$totalSiswa = snapshot(
-        DB::table('riwayat_role_user'),
-        $refDate,
-        'tanggal_mulai',
-        'tanggal_selesai'
-    )
-    ->where('role','siswa')
-    ->distinct('user_id')
-    ->count('user_id');
-$totalGuru = snapshot(
-        DB::table('riwayat_role_user'),
-        $refDate,
-        'tanggal_mulai',
-        'tanggal_selesai'
-    )
-    ->where('role','guru')
-    ->distinct('user_id')
-    ->count('user_id');
-$totalPetugas = snapshot(
-        DB::table('riwayat_role_user'),
-        $refDate,
-        'tanggal_mulai',
-        'tanggal_selesai'
-    )
-    ->whereIn('role',['petugas','kep_perpus'])
-    ->distinct('user_id')
-    ->count('user_id');
-$kepalaPerpus = snapshot(
-        DB::table('riwayat_role_user as r'),
-        $refDate,
-        'r.tanggal_mulai',
-        'r.tanggal_selesai'
-    )
-    ->where('r.role','kep_perpus')
-    ->join('user as u','u.id_user','=','r.user_id')
-    ->orderBy('r.tanggal_mulai','desc')
-    ->select('u.*')
-    ->first();
+        $totalPegawai = snapshot(
+                DB::table('riwayat_role_user'),
+                $refDate,
+                'tanggal_mulai',
+                'tanggal_selesai'
+            )
+            ->whereIn('role',['guru','petugas','kep_perpus','kepsek'])
+            ->distinct('user_id')
+            ->count('user_id');
+        $totalSiswa = snapshot(
+                DB::table('riwayat_role_user'),
+                $refDate,
+                'tanggal_mulai',
+                'tanggal_selesai'
+            )
+            ->where('role','siswa')
+            ->distinct('user_id')
+            ->count('user_id');
+        $totalGuru = snapshot(
+                DB::table('riwayat_role_user'),
+                $refDate,
+                'tanggal_mulai',
+                'tanggal_selesai'
+            )
+            ->where('role','guru')
+            ->distinct('user_id')
+            ->count('user_id');
+        $totalPetugas = snapshot(
+                DB::table('riwayat_role_user'),
+                $refDate,
+                'tanggal_mulai',
+                'tanggal_selesai'
+            )
+            ->whereIn('role',['petugas','kep_perpus'])
+            ->distinct('user_id')
+            ->count('user_id');
+        $kepalaPerpus = snapshot(
+                DB::table('riwayat_role_user as r'),
+                $refDate,
+                'r.tanggal_mulai',
+                'r.tanggal_selesai'
+            )
+            ->where('r.role','kep_perpus')
+            ->join('user as u','u.id_user','=','r.user_id')
+            ->orderBy('r.tanggal_mulai','desc')
+            ->select('u.*')
+            ->first();
 
         // PEMINJAMAN
         $peminjaman = [];
@@ -305,19 +285,41 @@ $kepalaPerpus = snapshot(
             $refDate
         );
 
-        $totalStok  = (clone $statusBuku)->count();
-        $stokBaik   = (clone $statusBuku)->where('status','baik')->count();
-        $stokRusak  = (clone $statusBuku)->where('status','rusak')->count();
-        $stokHilang = (clone $statusBuku)->where('status','hilang')->count();
+        $totalStok  = DB::table('buku_eksemplar')->count();
+        $stokBaik = snapshot(
+                DB::table('riwayat_status_buku'),
+                $refDate
+            )
+            ->where(function ($q) {
+                $q->whereNull('status')
+                ->orWhere('status','baik');
+            })
+            ->count();
+        $stokRusak = snapshot(
+                DB::table('riwayat_status_buku'),
+                $refDate
+            )
+            ->where('status','rusak')
+            ->count();
+        $stokHilang = snapshot(
+                DB::table('riwayat_status_buku'),
+                $refDate
+            )
+            ->where('status','hilang')
+            ->count();
+
 
         // LIST BUKU
-        $listBaik = snapshot(
-                DB::table('riwayat_status_buku as rs'),
-                $refDate
-            )
-            ->join('buku_eksemplar as e','e.id_eksemplar','=','rs.id_eksemplar')
-            ->join('buku as b','b.id','=','e.buku_id')
-            ->where('rs.status','baik')
+        $listBaik = DB::table('buku as b')
+            ->leftJoin('buku_eksemplar as e','e.buku_id','=','b.id')
+            ->leftJoin('riwayat_status_buku as rs', function ($join) use ($refDate) {
+                $join->on('rs.id_eksemplar','=','e.id_eksemplar')
+                    ->where('rs.tanggal_mulai','<=',$refDate)
+                    ->where(function ($q) use ($refDate) {
+                        $q->whereNull('rs.tanggal_selesai')
+                        ->orWhere('rs.tanggal_selesai','>=',$refDate);
+                    });
+            })
             ->select(
                 DB::raw("
                     CASE
@@ -325,25 +327,43 @@ $kepalaPerpus = snapshot(
                         WHEN b.kelas_akademik = '11' THEN 'Buku Kelas 11'
                         WHEN b.kelas_akademik = '12' THEN 'Buku Kelas 12'
                         WHEN b.tipe_bacaan = 'fiksi' THEN 'Buku Fiksi'
-                        ELSE 'Buku Umum (Non-Fiksi)'
+                        ELSE 'Buku Non-Fiksi'
                     END AS kategori
                 "),
                 'b.judul',
                 'b.pengarang',
-                DB::raw('COUNT(DISTINCT rs.id_eksemplar) as jumlah')
+                DB::raw("
+                    SUM(
+                        CASE 
+                            WHEN rs.status IS NULL THEN 1
+                            WHEN rs.status = 'baik' THEN 1
+                            ELSE 0
+                        END
+                    ) as jumlah
+                ")
             )
-            ->groupBy(
-                'b.id','b.judul','b.pengarang','b.kelas_akademik','b.tipe_bacaan'
-            )
+            ->groupBy('b.id','b.judul','b.pengarang','b.kelas_akademik','b.tipe_bacaan')
+            ->havingRaw("
+                SUM(
+                    CASE 
+                        WHEN rs.status IS NULL THEN 1
+                        WHEN rs.status = 'baik' THEN 1
+                        ELSE 0
+                    END
+                ) > 0
+            ")
             ->get();
 
-        $listRusak = snapshot(
-                DB::table('riwayat_status_buku as rs'),
-                $refDate
-            )
-            ->join('buku_eksemplar as e','e.id_eksemplar','=','rs.id_eksemplar')
-            ->join('buku as b','b.id','=','e.buku_id')
-            ->where('rs.status','rusak')
+        $listRusak = DB::table('buku as b')
+            ->leftJoin('buku_eksemplar as e','e.buku_id','=','b.id')
+            ->leftJoin('riwayat_status_buku as rs', function ($join) use ($refDate) {
+                $join->on('rs.id_eksemplar','=','e.id_eksemplar')
+                    ->where('rs.tanggal_mulai','<=',$refDate)
+                    ->where(function ($q) use ($refDate) {
+                        $q->whereNull('rs.tanggal_selesai')
+                        ->orWhere('rs.tanggal_selesai','>=',$refDate);
+                    });
+            })
             ->select(
                 DB::raw("
                     CASE
@@ -351,25 +371,31 @@ $kepalaPerpus = snapshot(
                         WHEN b.kelas_akademik = '11' THEN 'Buku Kelas 11'
                         WHEN b.kelas_akademik = '12' THEN 'Buku Kelas 12'
                         WHEN b.tipe_bacaan = 'fiksi' THEN 'Buku Fiksi'
-                        ELSE 'Buku Umum (Non-Fiksi)'
+                        ELSE 'Buku Non-Fiksi'
                     END AS kategori
                 "),
                 'b.judul',
                 'b.pengarang',
-                DB::raw('COUNT(DISTINCT rs.id_eksemplar) as jumlah')
+                DB::raw("
+                    SUM(
+                        CASE WHEN rs.status = 'rusak' THEN 1 ELSE 0 END
+                    ) as jumlah
+                ")
             )
-            ->groupBy(
-                'b.id','b.judul','b.pengarang','b.kelas_akademik','b.tipe_bacaan'
-            )
+            ->groupBy('b.id','b.judul','b.pengarang','b.kelas_akademik','b.tipe_bacaan')
+            ->havingRaw("SUM(CASE WHEN rs.status = 'rusak' THEN 1 ELSE 0 END) > 0")
             ->get();
 
-        $listHilang = snapshot(
-                DB::table('riwayat_status_buku as rs'),
-                $refDate
-            )
-            ->join('buku_eksemplar as e','e.id_eksemplar','=','rs.id_eksemplar')
-            ->join('buku as b','b.id','=','e.buku_id')
-            ->where('rs.status','hilang')
+        $listHilang = DB::table('buku as b')
+            ->leftJoin('buku_eksemplar as e','e.buku_id','=','b.id')
+            ->leftJoin('riwayat_status_buku as rs', function ($join) use ($refDate) {
+                $join->on('rs.id_eksemplar','=','e.id_eksemplar')
+                    ->where('rs.tanggal_mulai','<=',$refDate)
+                    ->where(function ($q) use ($refDate) {
+                        $q->whereNull('rs.tanggal_selesai')
+                        ->orWhere('rs.tanggal_selesai','>=',$refDate);
+                    });
+            })
             ->select(
                 DB::raw("
                     CASE
@@ -377,16 +403,19 @@ $kepalaPerpus = snapshot(
                         WHEN b.kelas_akademik = '11' THEN 'Buku Kelas 11'
                         WHEN b.kelas_akademik = '12' THEN 'Buku Kelas 12'
                         WHEN b.tipe_bacaan = 'fiksi' THEN 'Buku Fiksi'
-                        ELSE 'Buku Umum (Non-Fiksi)'
+                        ELSE 'Buku Non-Fiksi'
                     END AS kategori
                 "),
                 'b.judul',
                 'b.pengarang',
-                DB::raw('COUNT(DISTINCT rs.id_eksemplar) as jumlah')
+                DB::raw("
+                    SUM(
+                        CASE WHEN rs.status = 'hilang' THEN 1 ELSE 0 END
+                    ) as jumlah
+                ")
             )
-            ->groupBy(
-                'b.id','b.judul','b.pengarang','b.kelas_akademik','b.tipe_bacaan'
-            )
+            ->groupBy('b.id','b.judul','b.pengarang','b.kelas_akademik','b.tipe_bacaan')
+            ->havingRaw("SUM(CASE WHEN rs.status = 'hilang' THEN 1 ELSE 0 END) > 0")
             ->get();
 
         $listDipinjamBiasa = DB::table('peminjaman as p')
@@ -402,7 +431,7 @@ $kepalaPerpus = snapshot(
                         WHEN b.kelas_akademik='11' THEN 'Buku Kelas 11'
                         WHEN b.kelas_akademik='12' THEN 'Buku Kelas 12'
                         WHEN b.tipe_bacaan='fiksi' THEN 'Buku Fiksi'
-                        ELSE 'Buku Umum (Non-Fiksi)'
+                        ELSE 'Buku Non-Fiksi'
                     END AS kategori
                 "),
                 'b.judul',
@@ -597,7 +626,7 @@ $kepalaPerpus = snapshot(
             'Kelas 11' => $stokKelas11,
             'Kelas 12' => $stokKelas12,
             'Buku Fiksi' => $stokFiksi,
-            'Buku Umum (Non-Fiksi)' => $stokNonFiksi,
+            'Buku Non-Fiksi' => $stokNonFiksi,
         ];
 
         // USER

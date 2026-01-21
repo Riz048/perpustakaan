@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\EksemplarService;
 use App\Models\BukuEksemplar;
 use App\Models\PaketBuku;
 use App\Models\Peminjaman;
@@ -70,7 +71,7 @@ class PeminjamanWajibController extends Controller
         ));
     }
 
-    public function store(Request $request)
+    public function store(Request $request, EksemplarService $eksemplarService)
     {
         $request->validate([
             'paket_id'       => 'required|exists:paket_buku,id',
@@ -82,9 +83,9 @@ class PeminjamanWajibController extends Controller
         $paket = PaketBuku::findOrFail($request->paket_id);
 
         $exists = Peminjaman::where('id_user', $request->id_user)
-            ->where('keterangan', 'BUKU_WAJIB')
-            ->where('paket_id', $paket->id)
-            ->where('status', 'dipinjam')
+            ->where('keterangan','BUKU_WAJIB')
+            ->where('paket_id',$paket->id)
+            ->where('status','dipinjam')
             ->exists();
 
         if ($exists) {
@@ -94,24 +95,31 @@ class PeminjamanWajibController extends Controller
         }
 
         try {
-            DB::transaction(function () use ($request, $paket) {
+            DB::transaction(function () use ($request, $paket, $eksemplarService) {
 
                 $peminjaman = Peminjaman::create([
                     'paket_id'       => $paket->id,
                     'tanggal_pinjam' => $request->tanggal_pinjam,
                     'lama_pinjam'    => $request->lama_pinjam,
                     'id_user'        => $request->id_user,
-                    'id_pegawai'     => Auth::id(),
+                    'id_pegawai'     => auth()->id(),
                     'keterangan'     => 'BUKU_WAJIB',
                     'status'         => 'dipinjam',
                 ]);
 
                 foreach ($paket->detail as $detail) {
-                    $eksemplars = BukuEksemplar::where('buku_id', $detail->buku_id)
-                        ->where('status', 'baik')
+
+                    $eksemplars = BukuEksemplar::where('buku_id',$detail->buku_id)
+                        ->whereIn('id_eksemplar', function ($q) {
+                            $q->select('id_eksemplar')
+                            ->from('riwayat_status_buku')
+                            ->where('status','baik')
+                            ->whereNull('tanggal_selesai');
+                        })
                         ->whereDoesntHave('peminjamanDetail', fn($q) =>
                             $q->where('status_transaksi','dipinjam')
                         )
+                        ->lockForUpdate()
                         ->limit($detail->jumlah)
                         ->get();
 
@@ -120,12 +128,21 @@ class PeminjamanWajibController extends Controller
                     }
 
                     foreach ($eksemplars as $eks) {
+
                         PeminjamanDetail::create([
                             'peminjaman_id'   => $peminjaman->id,
                             'eksemplar_id'    => $eks->id_eksemplar,
                             'kondisi_buku'    => 'baik',
                             'status_transaksi'=> 'dipinjam',
                         ]);
+
+                        $eksemplarService->ubahStatus(
+                            $eks->id_eksemplar,
+                            'dipinjam',
+                            'peminjaman buku wajib',
+                            auth()->id(),
+                            'Peminjaman buku wajib'
+                        );
                     }
                 }
             });
@@ -136,12 +153,11 @@ class PeminjamanWajibController extends Controller
             ]);
         }
 
-        // sukses
         return redirect()->route('peminjaman.wajib.index', [
             'kelas'  => $paket->kelas,
             'rombel' => $paket->rombel,
             'tahun'  => $paket->tahun_ajaran,
             'target' => $paket->target,
-        ])->with('success', 'Peminjaman buku wajib berhasil diproses.');
+        ])->with('success','Peminjaman buku wajib berhasil diproses.');
     }
 }

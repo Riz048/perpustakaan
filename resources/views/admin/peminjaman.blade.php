@@ -192,7 +192,7 @@
                                         '{{ $item->id }}',
                                         '{{ $item->tanggal_pinjam }}',
                                         '{{ $item->lama_pinjam }}',
-                                        '{{ $item->detail->first()->eksemplar->buku_id ?? '' }}',
+                                        '{{ $item->detail->first()->eksemplar->id_eksemplar ?? '' }}',
                                         '{{ $item->status }}',
                                         '{{ $item->id_user }}',
                                         '{{ $item->keterangan }}'
@@ -230,11 +230,15 @@
                     <div class="form-row">
                         <div class="form-group col-md-12">
                             <label>Buku</label>
-                            <select name="id_buku" class="form-control select-search" required>
+                            <select name="eksemplar_id" class="form-control select-search" required>
                                 <option value="">Pilih Buku</option>
-                                @foreach($bukus as $bk)
-                                    <option value="{{ $bk->id }}">
-                                        {{ $bk->judul }} — {{ $bk->pengarang ?? '-' }}
+                                @foreach($eksemplars as $bukuId => $listEksemplar)
+                                    @php
+                                        $eks = $listEksemplar->first();
+                                    @endphp
+                                    <option value="{{ $eks->id_eksemplar }}">
+                                        {{ $eks->buku->judul }} — {{ $eks->buku->pengarang ?? '-' }}
+                                        ({{ $listEksemplar->count() }} tersedia)
                                     </option>
                                 @endforeach
                             </select>
@@ -297,7 +301,7 @@
                                 readonly
                                 style="background:#f8f9fc">
 
-                            <input type="hidden" name="id_buku" id="eBukuHidden">
+                            <input type="hidden" name="eksemplar_id" id="eBukuHidden">
                         </div>
                     </div>
                     <div class="form-row">
