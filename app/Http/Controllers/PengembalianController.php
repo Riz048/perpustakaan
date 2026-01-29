@@ -124,7 +124,7 @@ class PengembalianController extends Controller
                         'status_transaksi' => 'dikembalikan'
                     ]);
 
-                    // SATU-SATUNYA TEMPAT UBAH STATUS
+                    // ubah status
                     $eksemplarService->ubahStatus(
                         $detail->eksemplar->id_eksemplar,
                         $kondisi,

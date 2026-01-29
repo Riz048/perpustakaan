@@ -88,7 +88,7 @@ class UserController extends Controller
                 'tanggal_selesai'=> null
             ]);
 
-            // khusus siswa → buat kelas aktif pertama
+            // khusus siswa -> buat kelas aktif pertama
             if ($user->role === 'siswa') {
                 $request->validate([
                     'tingkat' => 'required|in:10,11,12',
@@ -323,7 +323,7 @@ class UserController extends Controller
                 ->where('id_user', $id)
                 ->update(['status' => 'non-aktif']);
 
-            // jika siswa → nonaktifkan data siswa
+            // jika siswa -> nonaktifkan data siswa
             DB::table('siswa')
                 ->where('id_siswa', $id)
                 ->where('status', 'aktif')
@@ -342,12 +342,12 @@ class UserController extends Controller
                     'tanggal_selesai' => now()->toDateString()
                 ]);
 
-            // jika petugas → nonaktifkan
+            // jika petugas -> nonaktifkan
             DB::table('petugas')
                 ->where('id_pegawai', $id)
                 ->update(['status' => 'non-aktif']);
 
-            // jika guru → nonaktifkan
+            // jika guru -> nonaktifkan
             DB::table('guru')
                 ->where('id_guru', $id)
                 ->where('status','aktif')

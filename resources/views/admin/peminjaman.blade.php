@@ -37,7 +37,7 @@
     height: 100%;
 }
 
-/* Saat dropdown terbuka → selection box dibuat transparan */
+/* Saat dropdown terbuka -> selection box dibuat transparan */
 .select2-container--open .select2-selection--single {
     border-color: #ced4da;
     background-color: #f8f9fa;

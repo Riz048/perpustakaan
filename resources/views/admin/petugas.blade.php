@@ -79,7 +79,7 @@
                             
                             <td class="text-center">
                                 @if(
-                                    in_array(Auth::user()->role, ['admin','kepsek']) ||
+                                    in_array(Auth::user()->role, ['admin','kepsek','kep_perpus']) ||
                                     (Auth::user()->role === 'kep_perpus' && $p->role === 'petugas')
                                 )
                                     <button class="btn btn-warning btn-sm"
@@ -156,7 +156,7 @@
                         <select name="role" class="form-control">
                             <option value="petugas">Petugas</option>
 
-                            @if(in_array(Auth::user()->role, ['kepsek', 'admin']))
+                            @if(in_array(Auth::user()->role, ['kepsek', 'admin', 'kep_perpus']))
                                 <option value="admin">Admin</option>
                                 <option value="kep_perpus">Kepala Perpustakaan</option>
                                 <option value="kepsek">Kepala Sekolah</option>
@@ -221,7 +221,7 @@
                             <option value="petugas">Petugas</option>
                             <option value="guru">Guru</option>
 
-                            @if(in_array(Auth::user()->role, ['admin','kepsek']))
+                            @if(in_array(Auth::user()->role, ['admin','kepsek', 'kep_perpus']))
                                 <option value="admin">Admin</option>
                                 <option value="kep_perpus">Kepala Perpustakaan</option>
                                 <option value="kepsek">Kepala Sekolah</option>
@@ -262,7 +262,7 @@
                 .querySelectorAll('#modalEditPetugas input, #modalEditPetugas select')
                 .forEach(el => el.disabled = true);
 
-            btnUpdate.style.display = 'none'; // ⬅️ KUNCI
+            btnUpdate.style.display = 'none';
         } else {
             btnUpdate.style.display = 'inline-block';
         }

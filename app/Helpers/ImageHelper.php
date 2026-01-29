@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Storage;
 if (! function_exists('bookImage')) {
     function bookImage($path)
     {
-        // Jika kosong → fallback
+        // Jika kosong -> fallback
         if (!$path) {
             return asset('images/buku.png');
         }
@@ -15,7 +15,7 @@ if (! function_exists('bookImage')) {
             return $path;
         }
 
-        // Jika path Windows lokal → fallback
+        // Jika path Windows lokal -> fallback
         if (preg_match('/^[A-Za-z]:\\\\/', $path)) {
             return asset('images/buku.png');
         }
